@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import supabase from '@/lib/supabase';
+import supabase from '@/services/supabase';
 import { isAuthenticated, getAdmin } from '@/lib/auth';
 
 // GET all listings
