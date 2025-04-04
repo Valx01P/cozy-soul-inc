@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+  --breakpoint-c2xs: 380px;
+  --breakpoint-cxs: 480px;
+  --breakpoint-csm: 560px;
+  --breakpoint-cmd: 800px;
+  --breakpoint-cmd2: 900px;
+  --breakpoint-clg: 1024px;
+  --breakpoint-cxl: 1080px;
+  --breakpoint-c2xl: 1240px;
+}
+
+:root {
+  --primary-orange: #FB5904;
+  --primary-blue: #006dd9;
+  --primary-red: #FF0052;
+  --primary-red-hover: #FF266C;
+}
+
+/* box-shadow: [horizontal offset] [vertical offset] [blur radius] [spread radius] [color] [inset]; */
+.dark-shadow {
+  box-shadow: 
+    0px 3px 2px rgba(23, 23, 23, 0.364);
+}
+
+.flex-center {
+  @apply flex items-center justify-center
+}
+
+.flex-col-center {
+  @apply flex items-center justify-center flex-col
+}
+
+.flex-row-center {
+  @apply flex items-center justify-center flex-row
+}
+
+#hero {
+  background-image: url('/main/image.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
