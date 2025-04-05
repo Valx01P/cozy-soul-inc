@@ -3,11 +3,12 @@ import useAuthStore from "../../../stores/authStore"
 
 export default function AdminNav() {
   const { user, token, isAuthenticated } = useAuthStore(((state) => state))
+  const authenticated = user && token && isAuthenticated
 
   return (
     <nav className="flex justify-between items-center bg-gray-800 p-4 text-white">
       <div className="text-lg font-bold">Admin Panel</div>
-      {user && token && isAuthenticated &&
+      {authenticated &&
         <div className="space-x-4">
           <a href="/admin/dashboard" className="hover:text-gray-400">Dashboard</a>
           <a href="/admin/users" className="hover:text-gray-400">Users</a>

@@ -3,7 +3,6 @@
 import react from "react";
 import Loading from "../components/site/Loading"
 import AdminNavbar from '../components/admin/AdminNav'
-import Footer from '../components/site/Footer'
 
 export default function AdminLayout({ children }) {
   const [isInitialLoading, setIsInitialLoading] = react.useState(true)
@@ -25,8 +24,7 @@ export default function AdminLayout({ children }) {
   return (
     <>
         <AdminNavbar/>
-          {children}
-        <Footer/>
+        {children}
     </>
   )
 }

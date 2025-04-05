@@ -1,0 +1,472 @@
+{
+  "amenities": {
+    "Scenic Views": [
+      {
+        "name":"Beach view",
+        "svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\" aria-hidden=\"true\" role=\"presentation\" focusable=\"false\" style=\"display: block; height: 24px; width: 24px; fill: currentcolor;\"><path d=\"\"></path></svg>"
+      },
+      {
+        "name":"Garden view",
+        "svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\" aria-hidden=\"true\" role=\"presentation\" focusable=\"false\" style=\"display: block; height: 24px; width: 24px; fill: currentcolor;\"><path d=\"\"></path></svg>"
+      },
+      {
+        "name":"Mountain view",
+        "svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\" aria-hidden=\"true\" role=\"presentation\" focusable=\"false\" style=\"display: block; height: 24px; width: 24px; fill: currentcolor;\"><path d=\"\"></path></svg>"
+      },
+      {
+        "name":"Ocean view",
+        "svg":""
+      }
+    ],
+    "Bathroom": [
+      {
+        "name":"Hair dryer",
+        "svg":""
+      },
+      {
+        "name":"Shampoo",
+        "svg":""
+      },
+      {
+        "name":"Hot water",
+        "svg":""
+      },
+      {
+        "name":"Shower gel",
+        "svg":""
+      },
+      {
+        "name":"Bathtub",
+        "svg":""
+      },
+      {
+        "name":"Conditioner",
+        "svg":""
+      },
+      {
+        "name":"Body soap",
+        "svg":""
+      },
+      {
+        "name":"Bidet",
+        "svg":""
+      },
+      {
+        "name":"Cleaning products",
+        "svg":""
+      }
+    ],
+    "Bedroom and laundry": [
+      {
+        "name":"Washer",
+        "svg":""
+      },
+      {
+        "name":"Dryer",
+        "svg":""
+      },
+      {
+        "name":"Essentials",
+        "svg":""
+      },
+      {
+        "name":"Hangers",
+        "svg":""
+      },
+      {
+        "name":"Bed linens",
+        "svg":""
+      },
+      {
+        "name":"Extra pillows and blankets",
+        "svg":""
+      },
+      {
+        "name":"Iron",
+        "svg":""
+      },
+      {
+        "name":"Room-darkening shades",
+        "svg":""
+      },
+      {
+        "name":"Safe",
+        "svg":""
+      },
+      {
+        "name":"Hair dryer",
+        "svg":""
+      },
+      {
+        "name":"Clothing storage",
+        "svg":""
+      }
+    ],
+    "Entertainment": [
+      {
+        "name":"TV with Standard cable",
+        "svg":""
+      },
+      {
+        "name":"Record player",
+        "svg":""
+      },
+      {
+        "name":"Books and reading material",
+        "svg":""
+      },
+      {
+        "name":"Bluetooth sound system",
+        "svg":""
+      },
+      {
+        "name":"Ethernet connection",
+        "svg":""
+      },
+      {
+        "name":"HDTV with standard cable, premium cable",
+        "svg":""
+      },
+      {
+        "name":"TV",
+        "svg":""
+      }
+    ],
+    "Family": [
+      {
+        "name":"Window guards",
+        "svg":""
+      },
+      {
+        "name":"Babysitter recommendations",
+        "svg":""
+      }
+    ],
+    "Heating and cooling": [
+      {
+        "name":"Air conditioning",
+        "svg":""
+      },
+      {
+        "name":"Portable air conditioning",
+        "svg":""
+      },
+      {
+        "name":"Indoor fireplace: electric",
+        "svg":""
+      },
+      {
+        "name":"Heating",
+        "svg":""
+      },
+      {
+        "name":"Ceiling fan",
+        "svg":""
+      },
+      {
+        "name":"AC - split type ductless system",
+        "svg":""
+      },
+      {
+        "name":"Central air conditioning",
+        "svg":""
+      },
+      {
+        "name":"Central heating",
+        "svg":""
+      }
+    ],
+    "Home safety": [
+      {
+        "name":"Smoke alarm",
+        "svg":""
+      },
+      {
+        "name":"Carbon monoxide alarm",
+        "svg":""
+      },
+      {
+        "name":"Fire extinguisher",
+        "svg":""
+      },
+      {
+        "name":"First aid kit",
+        "svg":""
+      },
+      {
+        "name":"Exterior security cameras on property",
+        "svg":""
+      }
+    ],
+    "Internet and office": [
+      {
+        "name":"Wifi",
+        "svg":""
+      },
+      {
+        "name":"Dedicated workspace",
+        "svg":""
+      }
+    ],
+    "Kitchen and dining": [
+      {
+        "name":"Refrigerator",
+        "svg":""
+      },
+      {
+        "name":"Microwave",
+        "svg":""
+      },
+      {
+        "name":"Dishes and silverware",
+        "svg":""
+      },
+      {
+        "name":"Coffee maker",
+        "svg":""
+      },
+      {
+        "name":"Kitchen",
+        "svg":""
+      },
+      {
+        "name":"Cooking basics",
+        "svg":""
+      },
+      {
+        "name":"Mini fridge",
+        "svg":""
+      },
+      {
+        "name":"Freezer",
+        "svg":""
+      },
+      {
+        "name":"Dishwasher",
+        "svg":""
+      },
+      {
+        "name":"Induction stove",
+        "svg":""
+      },
+      {
+        "name":"Stainless steel oven",
+        "svg":""
+      },
+      {
+        "name":"Hot water kettle",
+        "svg":""
+      },
+      {
+        "name":"Coffee maker",
+        "svg":""
+      },
+      {
+        "name":"Wine glasses",
+        "svg":""
+      },
+      {
+        "name":"Toaster",
+        "svg":""
+      },
+      {
+        "name":"Dining table",
+        "svg":""
+      },
+      {
+        "name":"Coffee",
+        "svg":""
+      }
+    ],
+    "Location features": [
+      {
+        "name":"Beach access - Beachfront",
+        "svg":""
+      },
+      {
+        "name":"Private entrance",
+        "svg":""
+      },
+      {
+        "name":"Waterfront",
+        "svg":""
+      },
+      {
+        "name":"Free resort access",
+        "svg":""
+      }
+    ],
+    "Outdoor": [
+      {
+        "name":"Private backyard - Fully fenced",
+        "svg":""
+      },
+      {
+        "name":"Outdoor furniture",
+        "svg":""
+      },
+      {
+        "name":"Outdoor dining area",
+        "svg":""
+      },
+      {
+        "name":"Patio or balcony",
+        "svg":""
+      },
+      {
+        "name":"Backyard",
+        "svg":""
+      },
+      {
+        "name":"Beach essentials",
+        "svg":""
+      },
+      {
+        "name":"Shared backyard - Fully fenced",
+        "svg":""
+      },
+      {
+        "name":"Sun loungers",
+        "svg":""
+      }
+    ],
+    "Parking and facilities": [
+      {
+        "name":"Free parking on premises",
+        "svg":""
+      },
+      {
+        "name":"Pool",
+        "svg":""
+      },
+      {
+        "name":"Gym",
+        "svg":""
+      },
+      {
+        "name":"Free street parking",
+        "svg":""
+      },
+      {
+        "name":"Private living room",
+        "svg":""
+      },
+      {
+        "name":"Shared outdoor pool - available all year, open 24 hours",
+        "svg":""
+      },
+      {
+        "name":"Paid parking off premises",
+        "svg":""
+      },
+      {
+        "name":"Paid parking on premises",
+        "svg":""
+      },
+      {
+        "name":"Elevator",
+        "svg":""
+      }
+    ],
+    "Services": [
+      {
+        "name":"Self check-in",
+        "svg":""
+      },
+      {
+        "name":"Building staff",
+        "svg":""
+      },
+      {
+        "name":"Smart lock",
+        "svg":""
+      },
+      {
+        "name":"Luggage dropoff allowed",
+        "svg":""
+      },
+      {
+        "name":"Breakfast",
+        "svg":""
+      },
+      {
+        "name":"Smoking allowed",
+        "svg":""
+      },
+      {
+        "name":"Long term stays allowed",
+        "svg":""
+      },
+      {
+        "name":"Cleaning available during stay",
+        "svg":""
+      },
+      {
+        "name":"Host greets you",
+        "svg":""
+      },
+      {
+        "name":"Keypad",
+        "svg":""
+      },
+      {
+        "name":"Lockbox",
+        "svg":""
+      },
+      {
+        "name":"Housekeeping - available at extra cost",
+        "svg":""
+      }
+    ],
+    "Not included": [
+      {
+        "name":"Exterior security cameras on property",
+        "svg":""
+      },
+      {
+        "name":"Kitchen",
+        "svg":""
+      },
+      {
+        "name":"Heating",
+        "svg":""
+      },
+      {
+        "name":"Wifi",
+        "svg":""
+      },
+      {
+        "name":"TV",
+        "svg":""
+      },
+      {
+        "name":"Washer",
+        "svg":""
+      },
+      {
+        "name":"Hair dryer",
+        "svg":""
+      },
+      {
+        "name":"Smoke alarm",
+        "svg":""
+      },
+      {
+        "name":"Carbon monoxide alarm",
+        "svg":""
+      },
+      {
+        "name":"Shampoo",
+        "svg":""
+      },
+      {
+        "name":"Private entrance",
+        "svg":""
+      },
+      {
+        "name":"Essentials",
+        "svg":""
+      }
+    ]
+  }
+}

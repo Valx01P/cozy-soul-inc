@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
  
 // This function can be marked `async` if using `await` inside
 export function middleware(request) {
-  const token = true
+  const token = false
   const loginUrl = new URL('/admin', request.url)
 
   if (token) {
