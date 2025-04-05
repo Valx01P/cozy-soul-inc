@@ -1,0 +1,44 @@
+{
+  "Properties": [
+    {
+      "id": 1,
+      "host_id": 1,
+      "title": "Beautiful Apartment",
+      "description": "A beautiful apartment in the city center.",
+      "location": {
+        "address": "123 Main St, New York, NY",
+        "city": "New York",
+        "state": "NY",
+        "country": "USA",
+        "zip": "10001",
+        "latitude": 40.7128,
+        "longitude": -74.0060
+      },
+      "price": 120,
+      "price_description": "daily",
+      "main_image": "https://placehold.co/1024x1024/png?text=Main+Image",
+      "images": [
+        "https://placehold.co/1024x1024/png?text=Side+Image+1",
+        "https://placehold.co/1024x1024/png?text=Side+Image+2",
+        "https://placehold.co/1024x1024/png?text=Side+Image+3",
+        "https://placehold.co/1024x1024/png?text=Side+Image+4",
+        "https://placehold.co/1024x1024/png?text=Side+Image+5"
+      ],
+      "number_of_guests": 4,
+      "number_of_bedrooms": 2,
+      "number_of_beds": 3,
+      "additional_info": "House rules: No smoking, no pets. Check-in after 3 PM, check-out before 11 AM.",
+      "amenities": [
+        "Wi-Fi",
+        "Air Conditioning",
+        "Kitchen",
+        "Parking",
+        "TV",
+        "Pool"
+      ],
+      "is_active": true,
+      "created_at": "2023-10-01T12:00:00Z",
+      "updated_at": "2023-10-01T12:00:00Z"
+    }
+  ]
+}

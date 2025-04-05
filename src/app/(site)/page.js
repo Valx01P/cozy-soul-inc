@@ -5,7 +5,7 @@ import Hero from "../components/site/Hero"
 
 export default function Home() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center bg-amber-200">
+    <main className="flex flex-1 flex-col justify-center bg-[#F5F5F5]">
       <Hero />
       <Listings />
     </main>

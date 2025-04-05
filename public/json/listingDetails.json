@@ -1,0 +1,69 @@
+{
+  "listings": [
+    {
+      "id": 1,
+      "title": "Beautiful Apartment",
+      "description": "A beautiful apartment in the city center.",
+      "price": 120,
+      "price_description": "daily",
+      "location": "New York",
+      "main_image": "https://placehold.co/1024x1024/png?text=Main+Image",
+      "images": [
+        "https://placehold.co/1024x1024/png?text=Side+Image+1",
+        "https://placehold.co/1024x1024/png?text=Side+Image+2"
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Cozy Cottage",
+      "description": "A cozy cottage in the countryside.",
+      "price": 800,
+      "price_description": "for 5 days",
+      "location": "Vermont",
+      "main_image": "https://placehold.co/1024x1024/png?text=Main+Image",
+      "images": [
+        "https://placehold.co/1024x1024/png?text=Side+Image+1",
+        "https://placehold.co/1024x1024/png?text=Side+Image+2"
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Luxury Villa",
+      "description": "A luxury villa with a private pool.",
+      "price": 1500,
+      "price_description": "for 3 days",
+      "location": "Miami",
+      "main_image": "https://placehold.co/1024x1024/png?text=Main+Image",
+      "images": [
+        "https://placehold.co/1024x1024/png?text=Side+Image+1",
+        "https://placehold.co/1024x1024/png?text=Side+Image+2"
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Modern Loft",
+      "description": "A modern loft in the heart of the city.",
+      "price": 200,
+      "price_description": "daily",
+      "location": "San Francisco",
+      "main_image": "https://placehold.co/1024x1024/png?text=Main+Image",
+      "images": [
+        "https://placehold.co/1024x1024/png?text=Side+Image+1",
+        "https://placehold.co/1024x1024/png?text=Side+Image+2"
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Charming Studio",
+      "description": "A charming studio with a great view.",
+      "price": 90,
+      "price_description": "daily",
+      "location": "Seattle",
+      "main_image": "https://placehold.co/1024x1024/png?text=Main+Image",
+      "images": [
+        "https://placehold.co/1024x1024/png?text=Side+Image+1",
+        "https://placehold.co/1024x1024/png?text=Side+Image+2"
+      ]
+    }
+  ]
+}
