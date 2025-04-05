@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback, useRef } from "react"
-import LoadingSpinner from "../../site/LoadingSpinner"
+import LoadingSpinner from "../../../site/LoadingSpinner"
 
 // Initial location (Miami)
 const DEFAULT_LOCATION = {
