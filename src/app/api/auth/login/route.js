@@ -1,13 +1,13 @@
 
 import { NextResponse } from 'next/server';
-import supabase from '@/services/supabase';
+import supabase from '@/app/services/supabase';
 import { 
   generateAccessToken, 
   generateRefreshToken, 
   setAuthCookies, 
   storeRefreshToken,
   verifyPassword
-} from '@/lib/auth';
+} from '@/app/lib/auth';
 
 export async function POST(request) {
   try {

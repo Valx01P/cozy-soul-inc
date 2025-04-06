@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Camera } from "lucide-react"
-import usePropertyFormStore from "../../../../stores/propertyFormStore"
+import usePropertyFormStore from "../../../stores/propertyFormStore"
 
 export function BasicInfoFormStep() {
   // Get state and methods from the store

@@ -53,6 +53,60 @@
       "is_active": true,
       "created_at": "2023-10-01T12:00:00Z",
       "updated_at": "2023-10-01T12:00:00Z"
+    },
+    {
+      "id": 2,
+      "host_id": 2,
+      "title": "Cozy Cottage",
+      "description": "A cozy cottage in the countryside.",
+      "price": 150,
+      "price_description": "for five days",
+      "currency": "USD",
+      "main_image": "https://placehold.co/1024x1024/png?text=Main+Image",
+      "side_image1": "https://placehold.co/1024x1024/png?text=Side+Image+1",
+      "side_image2": "https://placehold.co/1024x1024/png?text=Side+Image+2",
+      "extra_images": [
+        "https://placehold.co/1024x1024/png?text=Side+Image+3",
+        "https://placehold.co/1024x1024/png?text=Side+Image+4",
+        "https://placehold.co/1024x1024/png?text=Side+Image+5"
+      ],
+
+      "location": {
+        "address": "456 Elm St, Springfield, IL",
+        "street": "456 Elm St",
+        "apt": "",
+        "city": "Springfield",
+        "state": "IL",
+        "zip": "62701",
+        "country": "USA",
+        "latitude": 39.7817,
+        "longitude": -89.6501
+      },
+
+      "number_of_guests": 6,
+      "number_of_bedrooms": 3,
+      "number_of_beds": 3,
+      "additional_info": "",
+      "amenities": {
+        "Scenic Views": {
+          "Mountain view": true
+        },
+        "Bathroom": {
+          "Conditioner": true,
+          "Body soap": true,
+          "Cleaning products": true
+        },
+        "Bedroom and laundry": {
+          "Washing machine": true,
+          "Dryer": true
+        },
+        "Entertainment": {
+          "TV": true
+        }
+      },
+      "is_active": true,
+      "created_at": "2023-10-01T12:00:00Z",
+      "updated_at": "2023-10-01T12:00:00Z"
     }
   ]
 }

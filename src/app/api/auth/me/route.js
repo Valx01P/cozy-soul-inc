@@ -1,7 +1,7 @@
 // src/app/api/auth/me/route.js
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getAdmin } from '@/lib/auth';
+import { getAdmin } from '@/app/lib/auth';
 
 export async function GET() {
   const cookieStore = cookies();

@@ -5,7 +5,7 @@ import {
   validateRefreshToken, 
   generateAccessToken, 
   setAuthCookies 
-} from '@/lib/auth';
+} from '@/app/lib/auth';
 
 export async function POST(request) {
   const cookieStore = cookies();

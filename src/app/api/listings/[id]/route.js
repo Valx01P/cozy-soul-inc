@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import supabase from '@/services/supabase';
-import { isAuthenticated } from '@/lib/auth';
+import supabase from '@/app/services/supabase';
+import { isAuthenticated } from '@/app/lib/auth';
 
 // GET a single listing by ID
 export async function GET(request, { params }) {

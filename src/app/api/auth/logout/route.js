@@ -1,6 +1,6 @@
 // src/app/api/auth/logout/route.js
 import { NextResponse } from 'next/server';
-import { clearAuthCookies } from '@/lib/auth';
+import { clearAuthCookies } from '@/app/lib/auth';
 
 export async function POST() {
   try {

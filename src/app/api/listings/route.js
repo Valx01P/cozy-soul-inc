@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import supabase from '@/services/supabase';
-import { isAuthenticated, getAdmin } from '@/lib/auth';
+import supabase from '@/app/services/supabase';
+import { isAuthenticated, getAdmin } from '@/app/lib/auth';
 
 // GET all listings
 export async function GET(request) {

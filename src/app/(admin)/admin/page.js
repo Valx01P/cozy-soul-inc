@@ -1,7 +1,7 @@
 // this is the page with the auth
 // where the admin can login
 'use client'
-import useAuthStore from "../../../stores/authStore"
+import useAuthStore from "../../stores/authStore"
 import AdminLogin from "../../components/admin/AdminLogin"
 import AdminListings from "../../components/admin/AdminListings"
 

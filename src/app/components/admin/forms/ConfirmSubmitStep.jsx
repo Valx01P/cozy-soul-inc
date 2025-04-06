@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import usePropertyFormStore from "../../../../stores/propertyFormStore"
+import usePropertyFormStore from "../../../stores/propertyFormStore"
 
 export function ConfirmSubmitStep() {
   // Get all data from the store

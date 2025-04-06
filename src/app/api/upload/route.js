@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { isAuthenticated } from '@/lib/auth';
-import supabase from '@/services/supabase';
+import { isAuthenticated } from '@/app/lib/auth';
+import supabase from '@/app/services/supabase';
 
 export const config = {
   api: {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import supabase from '@/services/supabase';
+import supabase from '@/app/services/supabase';
 
 // Initialize Resend
 const resend = new Resend(process.env.RESEND_API_KEY);

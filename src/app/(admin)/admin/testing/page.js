@@ -1,5 +1,5 @@
 'use client'
-import useAuthStore from "../../../../stores/authStore"
+import useAuthStore from "../../../stores/authStore"
 import { LocationForm } from "@/app/components/admin/forms/archive/LocationForm"
 import { DetailsForm } from "@/app/components/admin/forms/archive/DetailsForm"
 import { BasicInfoForm } from "@/app/components/admin/forms/archive/BasicInfoForm"

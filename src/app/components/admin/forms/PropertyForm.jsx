@@ -6,7 +6,7 @@ import { BasicInfoFormStep } from './BasicInfoFormStep'
 import { LocationFormStep } from './LocationFormStep'
 import { DetailsFormStep } from './DetailsFormStep'
 import { ConfirmSubmitStep } from './ConfirmSubmitStep'
-import usePropertyFormStore from "../../../../stores/propertyFormStore"
+import usePropertyFormStore from "../../../stores/propertyFormStore"
 
 export function PropertyForm() {
   const { 
