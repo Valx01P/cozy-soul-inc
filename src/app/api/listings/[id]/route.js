@@ -163,6 +163,20 @@ async function deleteImageFromStorage(imageUrl) {
   }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /**
  * PUT update a listing by ID (admin only)
  * Requires authentication and updates property, location, images and amenities
@@ -445,6 +459,20 @@ export async function PUT(request, { params }) {
     }, { status: 500 })
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /**
  * DELETE a listing by ID (admin only)
