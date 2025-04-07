@@ -39,18 +39,18 @@ export async function POST(request) {
       }
     }
 
-    const emailSubject = propertyDetails ? `New inquiry about ${propertyDetails.title}` : 'New inquiry from your rental website'
+    const emailSubject = propertyDetails ?
+    `New inquiry about ${propertyDetails.title}` :
+    'New inquiry from your rental website'
     
     // Send the email
     const { data, error } = await resend.emails.send({
       from: 'Rental Website <noreply@scriptphi.com>',
       to: process.env.ADMIN_EMAIL,
       subject: emailSubject,
-      react: propertyDetails ? (
-        ListingEmail({ name, email, phone, message, propertyDetails })
-      ) : (
-        GeneralEmail({ name, email, phone, message })
-      ),
+      react: propertyDetails ?
+        ListingEmail({ name, email, phone, message, propertyDetails }) :
+        GeneralEmail({ name, email, phone, message }),
     })
     
     if (error) {
