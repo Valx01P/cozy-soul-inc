@@ -1,178 +1,125 @@
-import jwt from 'jsonwebtoken';
-import { cookies } from 'next/headers';
-import crypto from 'crypto';
-import supabase from '../services/supabase';
+// src/app/lib/auth.js
+import jwt from 'jsonwebtoken'
+import { cookies } from 'next/headers'
 
-// Generate an access token (15 minutes)
+/**
+ * Generates an access token for the authenticated admin
+ * @param {Object} payload - Data to be encoded in the token
+ * @returns {string} JWT access token
+ */
 export function generateAccessToken(payload) {
-  return jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: '15m',
-  });
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 7 * 24 * 60 * 60 }) // 2 hours
 }
 
-// Generate a refresh token (6 months)
+/**
+ * Generates a refresh token for extending sessions
+ * @param {Object} payload - Data to be encoded in the token
+ * @returns {string} JWT refresh token
+ */
 export function generateRefreshToken(payload) {
-  return jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
-    expiresIn: '6m',
-  });
+  return jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: 6 * 30 * 24 * 60 * 60 }) // 6 months
 }
 
-// Store refresh token in database
-export async function storeRefreshToken(adminId, token) {
-  const hashedToken = crypto
-    .createHash('sha256')
-    .update(token)
-    .digest('hex');
-
-  const { error } = await supabase
-    .from('AdminRefreshTokens')
-    .insert({
-      admin_id: adminId,
-      token: hashedToken,
-      expires_at: new Date(Date.now() + 182 * 24 * 60 * 60 * 1000).toISOString() // 6 months
-    });
-
-  if (error) {
-    console.error('Error storing refresh token:', error);
-    throw new Error('Failed to store refresh token');
-  }
-}
-
-// Verify access token
-export function verifyAccessToken(token) {
+/**
+ * Verifies a JWT access token
+ * @param {string} token - JWT token to verify
+ * @returns {Object|null} Decoded token payload or null if invalid
+ */
+export async function verifyToken(token) {
   try {
-    return jwt.verify(token, process.env.JWT_SECRET);
+    return jwt.verify(token, process.env.JWT_SECRET)
   } catch (error) {
-    return null;
+    return null
   }
 }
 
-// Verify refresh token
-export function verifyRefreshToken(token) {
+/**
+ * Verifies a JWT refresh token
+ * @param {string} token - JWT refresh token to verify
+ * @returns {Object|null} Decoded token payload or null if invalid
+ */
+export async function verifyRefreshToken(token) {
   try {
-    return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    return jwt.verify(token, process.env.JWT_REFRESH_SECRET)
   } catch (error) {
-    return null;
+    return null
   }
 }
 
-// Validate refresh token against database
-export async function validateRefreshToken(adminId, token) {
-  const hashedToken = crypto
-    .createHash('sha256')
-    .update(token)
-    .digest('hex');
-
-  const { data, error } = await supabase
-    .from('AdminRefreshTokens')
-    .select('*')
-    .eq('admin_id', adminId)
-    .eq('token', hashedToken)
-    .gt('expires_at', new Date().toISOString())
-    .single();
-
-  if (error || !data) {
-    return false;
-  }
-
-  return true;
-}
-
-// Set cookies for authentication
-export function setAuthCookies(accessToken, refreshToken) {
-  const cookieStore = cookies();
+/**
+ * Sets HTTP-only cookies for access and refresh tokens
+ * @param {Object} response - Next.js Response object
+ * @param {string} accessToken - JWT access token
+ * @param {string} refreshToken - JWT refresh token
+ */
+export async function setAuthCookies(accessToken, refreshToken) {
+  const cookieStore = await cookies()
   
-  // Set access token cookie (httpOnly for security)
+  // Set access token as HTTP-only cookie
   cookieStore.set('access_token', accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 15 * 60, // 15 minutes in seconds
+    maxAge: 7 * 24 * 60 * 60, // 2 hours in seconds
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    // maxAge: 15 * 60, // 15 minutes in seconds
     path: '/'
-  });
+  })
   
-  // Set refresh token cookie
+  // Set refresh token as HTTP-only cookie
   cookieStore.set('refresh_token', refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 182 * 24 * 60 * 60, // 6 months in seconds
+    maxAge: 6 * 30 * 24 * 60 * 60, // 6 months in seconds
+    expires: new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000), // 6 months
     path: '/'
-  });
+  })
 }
 
-// Clear auth cookies
-export function clearAuthCookies() {
-  const cookieStore = cookies();
+/**
+ * Clears auth cookies
+ * @param {Object} response - Next.js Response object
+ */
+export async function clearAuthCookies() {
+  const cookieStore = await cookies()
   
   cookieStore.set('access_token', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
     maxAge: 0,
+    expires: new Date(0), // Set to past date to delete cookie
     path: '/'
-  });
+  })
   
   cookieStore.set('refresh_token', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
     maxAge: 0,
+    expires: new Date(0), // Set to past date to delete cookie
     path: '/'
-  });
+  })
 }
 
-// Get admin from access token
-export async function getAdmin(accessToken) {
-  if (!accessToken) return null;
+/**
+ * Gets auth tokens from cookies or headers
+ * @param {Object} request - Next.js Request object
+ * @returns {Object} Object containing access and refresh tokens
+ */
+export async function getAuthTokens() {
+  const cookieStore = await cookies()
+  let accessToken = cookieStore.get('access_token')?.value
+  let refreshToken = cookieStore.get('refresh_token')?.value
   
-  const decoded = verifyAccessToken(accessToken);
-  if (!decoded) return null;
+  // If not in cookies, check authorization header (for API clients like Postman)
+  // const authHeader = request.headers.get('authorization')
+  // if (!accessToken && authHeader && authHeader.startsWith('Bearer ')) {
+  //   accessToken = authHeader.split(' ')[1]
+  // }
   
-  const { data, error } = await supabase
-    .from('Admins')
-    .select('admin_id, first_name, last_name, email')
-    .eq('admin_id', decoded.sub)
-    .single();
+  // For testing with Postman, also check if refresh token is in header
+  // const refreshHeader = request.headers.get('x-refresh-token')
+  // if (!refreshToken && refreshHeader) {
+  //   refreshToken = refreshHeader
+  // }
   
-  if (error || !data) return null;
-  
-  return data;
-}
-
-// Auth middleware helper
-export async function isAuthenticated() {
-  const cookieStore = cookies();
-  const accessToken = cookieStore.get('access_token')?.value;
-  
-  if (!accessToken) {
-    return false;
-  }
-  
-  const admin = await getAdmin(accessToken);
-  return !!admin;
-}
-
-// Helper for password hashing
-export function hashPassword(password) {
-  return crypto.pbkdf2Sync(
-    password,
-    process.env.JWT_SECRET.slice(0, 16),
-    10000,
-    64,
-    'sha512'
-  ).toString('hex');
-}
-
-// Helper to verify password
-export function verifyPassword(password, hashedPassword) {
-  const hash = crypto.pbkdf2Sync(
-    password,
-    process.env.JWT_SECRET.slice(0, 16),
-    10000,
-    64,
-    'sha512'
-  ).toString('hex');
-  
-  return hash === hashedPassword;
+  return { accessToken, refreshToken }
 }

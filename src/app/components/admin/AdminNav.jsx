@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import useAuthStore from "../../stores/authStore";
-import { Home, Users, List, Settings, LogOut, Menu, X } from 'lucide-react';
+import { Home, Users, List, Settings, LogOut, Menu, X, PenBoxIcon } from 'lucide-react';
 
 export default function AdminNav() {
   const { user, logout, isAuthenticated } = useAuthStore((state) => state);
@@ -31,7 +31,7 @@ export default function AdminNav() {
           <div className="flex">
             {/* Logo */}
             <div className="flex-shrink-0 flex items-center">
-              <Link href="/admin/dashboard" className="flex items-center">
+              <Link href="/admin" className="flex items-center">
                 <Image src="/svg/red-logo.svg" alt="Logo" width={32} height={32} />
                 <span className="ml-2 text-xl font-semibold text-gray-900">Admin</span>
               </Link>
@@ -40,36 +40,31 @@ export default function AdminNav() {
             {/* Desktop Nav Links */}
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               <Link
-                href="/admin/dashboard"
+                href="/admin"
                 className="border-transparent text-gray-500 hover:border-[var(--primary-red)] hover:text-[var(--primary-red)] inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
               >
                 <Home size={18} className="mr-1" />
                 Dashboard
               </Link>
+
               
               <Link
-                href="/admin/users"
+                href="/admin/listings/create"
                 className="border-transparent text-gray-500 hover:border-[var(--primary-red)] hover:text-[var(--primary-red)] inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
               >
-                <Users size={18} className="mr-1" />
-                Users
+                <PenBoxIcon size={18} className="mr-1" />
+                New Listing
               </Link>
-              
+
+
               <Link
-                href="/admin/listings"
+                href="/admin"
                 className="border-transparent text-gray-500 hover:border-[var(--primary-red)] hover:text-[var(--primary-red)] inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
               >
                 <List size={18} className="mr-1" />
-                Listings
+                View Listings
               </Link>
               
-              <Link
-                href="/admin/settings"
-                className="border-transparent text-gray-500 hover:border-[var(--primary-red)] hover:text-[var(--primary-red)] inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-              >
-                <Settings size={18} className="mr-1" />
-                Settings
-              </Link>
             </div>
           </div>
           

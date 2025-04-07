@@ -1,62 +1,54 @@
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+// src/app/api/auth/refresh/route.js
+import { NextResponse } from 'next/server'
 import { 
   verifyRefreshToken, 
-  validateRefreshToken, 
   generateAccessToken, 
-  setAuthCookies 
-} from '@/app/lib/auth';
+  generateRefreshToken, 
+  setAuthCookies,
+  getAuthTokens 
+} from '@/app/lib/auth'
 
-export async function POST(request) {
-  const cookieStore = cookies();
-  const refreshToken = cookieStore.get('refresh_token')?.value;
-  
-  if (!refreshToken) {
-    return NextResponse.json(
-      { error: 'Refresh token not found' },
-      { status: 401 }
-    );
-  }
-  
+/**
+ * Refreshes the access token using a valid refresh token
+ * Sets new HTTP-only cookies and returns new tokens
+ */
+export async function POST() {
   try {
+    // Get the refresh token from cookie or header
+    const { refreshToken } = await getAuthTokens()
+    
+    if (!refreshToken) {
+      return NextResponse.json({ message: 'Refresh token is required' }, { status: 401 })
+    }
+    
     // Verify the refresh token
-    const decoded = verifyRefreshToken(refreshToken);
+    const payload = await verifyRefreshToken(refreshToken)
     
-    if (!decoded) {
-      return NextResponse.json(
-        { error: 'Invalid refresh token' },
-        { status: 401 }
-      );
+    if (!payload || !payload.admin_id) {
+      return NextResponse.json({ message: 'Invalid refresh token' }, { status: 401 })
     }
     
-    // Validate against database
-    const isValid = await validateRefreshToken(decoded.sub, refreshToken);
-    
-    if (!isValid) {
-      return NextResponse.json(
-        { error: 'Refresh token revoked or expired' },
-        { status: 401 }
-      );
+    // Generate new tokens
+    const newPayload = {
+      admin_id: payload.admin_id,
+      email: payload.email,
+      username: payload.username
     }
     
-    // Generate new access token
-    const newAccessToken = generateAccessToken({ sub: decoded.sub });
+    const newAccessToken = generateAccessToken(newPayload)
+    const newRefreshToken = generateRefreshToken(newPayload)
     
-    // Set new access token in cookie
-    cookieStore.set('access_token', newAccessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60, // 15 minutes in seconds
-      path: '/'
-    });
+    // Set HTTP-only cookies
+    await setAuthCookies(newAccessToken, newRefreshToken)
+
+    const response = {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken
+    }
     
-    return NextResponse.json({ success: true });
+    // Return tokens in response for testing with Postman
+    return NextResponse.json(response, { status: 200 })
   } catch (error) {
-    console.error('Token refresh error:', error);
-    return NextResponse.json(
-      { error: 'Failed to refresh token' },
-      { status: 500 }
-    );
+    return NextResponse.json(error.message, { status: 500 })
   }
 }

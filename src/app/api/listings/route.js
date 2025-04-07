@@ -1,202 +1,340 @@
+// src/app/api/listings/route.js
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import SupabaseService from '@/app/services/SupabaseService';
+import { verifyToken, getAuthTokens } from '@/app/lib/auth';
 import supabase from '@/app/services/supabase';
-import { isAuthenticated, getAdmin } from '@/app/lib/auth';
 
-// GET all listings
+const propertiesService = new SupabaseService('Properties');
+const locationsService = new SupabaseService('Locations');
+const propertyImagesService = new SupabaseService('PropertyImages');
+const propertyAmenitiesService = new SupabaseService('PropertyAmenities');
+const amenitiesService = new SupabaseService('Amenities');
+const amenityCategoriesService = new SupabaseService('AmenitiesCategories');
+
+/**
+ * GET all listings with optional filtering
+ * 
+ * @example Query Parameters:
+ * ?page=1&limit=10&active=true
+ */
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const page = parseInt(searchParams.get('page') || '1');
-    const offset = (page - 1) * limit;
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page') || '0');
+    const limit = parseInt(url.searchParams.get('limit') || '20');
+    const isActive = url.searchParams.get('active');
     
-    const { data, error, count } = await supabase
+    // Base query for properties with location join
+    let query = supabase
       .from('Properties')
       .select(`
-        *,
-        PropertyTypes(type_name),
-        Locations(*),
-        Images(*)
-      `, { count: 'exact' })
-      .eq('is_active', true)
-      .order('order_position', { ascending: true })
-      .range(offset, offset + limit - 1);
+        id, 
+        host_id, 
+        title, 
+        description, 
+        price, 
+        price_description,
+        currency,
+        main_image, 
+        side_image1, 
+        side_image2,
+        number_of_guests, 
+        number_of_bedrooms, 
+        number_of_beds, 
+        number_of_bathrooms,
+        additional_info, 
+        is_active, 
+        created_at, 
+        updated_at,
+        Locations!inner(
+          id, 
+          address, 
+          street, 
+          apt, 
+          city, 
+          state, 
+          zip, 
+          country, 
+          latitude, 
+          longitude
+        ),
+        PropertyImages(id, image_url)
+      `);
     
-    if (error) {
-      console.error('Error fetching listings:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch listings' },
-        { status: 500 }
-      );
+    // Apply filters if provided
+    if (isActive !== null) {
+      const activeFilter = isActive === 'true';
+      query = query.eq('is_active', activeFilter);
     }
     
-    // Process the data to format it for the frontend
-    const listings = data.map(property => {
-      // Find primary image
-      const primaryImage = property.Images.find(img => img.is_primary) || 
-                        property.Images[0] || 
-                        { image_url: '/placeholder.jpg' };
+    // Apply pagination
+    const start = page * limit;
+    const end = start + limit - 1;
+    query = query.range(start, end);
+    
+    const { data: properties, error } = await query;
+    
+    if (error) {
+      throw new Error(`Error fetching properties: ${error.message}`);
+    }
+    
+    if (!properties || properties.length === 0) {
+      return NextResponse.json({ Properties: [] });
+    }
+    
+    // Fetch amenities for all properties
+    const propertyIds = properties.map(property => property.id);
+    const { data: amenitiesData, error: amenitiesError } = await supabase
+      .from('PropertyAmenities')
+      .select(`
+        property_id,
+        Amenities(
+          id,
+          name,
+          category_id,
+          AmenitiesCategories(name)
+        )
+      `)
+      .in('property_id', propertyIds);
+    
+    if (amenitiesError) {
+      throw new Error(`Error fetching amenities: ${amenitiesError.message}`);
+    }
+    
+    // Organize amenities by property and category
+    const amenitiesByProperty = {};
+    
+    amenitiesData?.forEach(item => {
+      const propertyId = item.property_id;
+      const amenity = item.Amenities;
+      const categoryName = amenity.AmenitiesCategories.name;
       
+      if (!amenitiesByProperty[propertyId]) {
+        amenitiesByProperty[propertyId] = {};
+      }
+      
+      if (!amenitiesByProperty[propertyId][categoryName]) {
+        amenitiesByProperty[propertyId][categoryName] = {};
+      }
+      
+      amenitiesByProperty[propertyId][categoryName][amenity.name] = true;
+    });
+    
+    // Format the response
+    const formattedProperties = properties.map(property => {
+      // Format the location object
+      const location = {
+        address: `${property.Locations.street}, ${property.Locations.city}, ${property.Locations.state}`,
+        street: property.Locations.street,
+        apt: property.Locations.apt || '',
+        city: property.Locations.city,
+        state: property.Locations.state,
+        zip: property.Locations.zip,
+        country: property.Locations.country,
+        latitude: property.Locations.latitude,
+        longitude: property.Locations.longitude
+      };
+      
+      // Get extra images
+      const extraImages = property.PropertyImages.map(img => img.image_url);
+      
+      // Get amenities for this property
+      const amenities = amenitiesByProperty[property.id] || {};
+      
+      // Return formatted property object
       return {
-        id: property.property_id,
+        id: property.id,
+        host_id: property.host_id,
         title: property.title,
-        price: property.display_price,
-        priceDescription: property.display_price_description,
-        type: property.PropertyTypes.type_name,
-        bedrooms: property.number_of_bedrooms,
-        beds: property.number_of_beds,
-        bathrooms: property.number_of_bathrooms,
-        guests: property.number_of_guests,
-        location: {
-          city: property.Locations.city,
-          state: property.Locations.state,
-          country: property.Locations.country
-        },
-        primaryImage: primaryImage.image_url,
-        order: property.order_position
+        description: property.description,
+        price: property.price,
+        price_description: property.price_description,
+        currency: property.currency,
+        main_image: property.main_image,
+        side_image1: property.side_image1,
+        side_image2: property.side_image2,
+        extra_images: extraImages,
+        location,
+        number_of_guests: property.number_of_guests,
+        number_of_bedrooms: property.number_of_bedrooms,
+        number_of_beds: property.number_of_beds,
+        number_of_bathrooms: property.number_of_bathrooms,
+        additional_info: property.additional_info || '',
+        amenities,
+        is_active: property.is_active,
+        created_at: property.created_at,
+        updated_at: property.updated_at
       };
     });
     
-    return NextResponse.json({
-      listings,
-      pagination: {
-        total: count,
-        page,
-        limit,
-        pages: Math.ceil(count / limit)
-      }
-    });
+    return NextResponse.json({ Properties: formattedProperties });
   } catch (error) {
-    console.error('Error in listings GET:', error);
-    return NextResponse.json(
-      { error: 'Server error' },
-      { status: 500 }
-    );
+    console.error('Fetch listings error:', error);
+    return NextResponse.json({ 
+      error: 'Failed to fetch listings' 
+    }, { status: 500 });
   }
 }
 
-// POST a new listing (admin only)
+/**
+ * POST a new listing (admin only)
+ * Creates a new property with location and amenities
+ */
 export async function POST(request) {
   try {
-    // Check authentication
-    const authenticated = await isAuthenticated();
+    // Verify the user's JWT token (admin only)
+    const { accessToken } = getAuthTokens(request);
     
-    if (!authenticated) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    if (!accessToken) {
+      return NextResponse.json({ 
+        error: 'Unauthorized' 
+      }, { status: 401 });
     }
     
-    // Get admin from access token
-    const cookieStore = cookies();
-    const accessToken = cookieStore.get('access_token')?.value;
-    const admin = await getAdmin(accessToken);
+    const payload = await verifyToken(accessToken);
     
-    if (!admin) {
-      return NextResponse.json(
-        { error: 'Admin not found' },
-        { status: 401 }
-      );
+    if (!payload || !payload.admin_id) {
+      return NextResponse.json({ 
+        error: 'Unauthorized' 
+      }, { status: 401 });
     }
     
-    // Parse the request body
-    const listingData = await request.json();
+    // Parse request body
+    const data = await request.json();
     
-    // First, insert location data
-    const { data: locationData, error: locationError } = await supabase
-      .from('Locations')
-      .insert({
-        address: listingData.address,
-        city: listingData.city,
-        state: listingData.state,
-        country: listingData.country,
-        latitude: listingData.latitude,
-        longitude: listingData.longitude
-      })
-      .select()
-      .single();
+    // Validate required fields
+    const requiredFields = ['title', 'price', 'price_description', 'location', 'number_of_guests', 'number_of_bedrooms', 'number_of_beds', 'number_of_bathrooms'];
     
-    if (locationError) {
-      console.error('Error creating location:', locationError);
-      return NextResponse.json(
-        { error: 'Failed to create location' },
-        { status: 500 }
-      );
+    for (const field of requiredFields) {
+      if (!data[field]) {
+        return NextResponse.json({ 
+          error: `Missing required field: ${field}` 
+        }, { status: 400 });
+      }
     }
     
-    // Get highest order_position to place new listing at the end
-    const { data: orderData } = await supabase
-      .from('Properties')
-      .select('order_position')
-      .order('order_position', { ascending: false })
-      .limit(1);
-    
-    const nextOrderPosition = orderData?.[0]?.order_position 
-      ? orderData[0].order_position + 10
-      : 10;
-    
-    // Now, insert the property data
-    const { data: propertyData, error: propertyError } = await supabase
-      .from('Properties')
-      .insert({
-        host_id: admin.admin_id,
-        title: listingData.title,
-        description: listingData.description,
-        location_id: locationData.location_id,
-        type_id: listingData.typeId,
-        display_price: listingData.displayPrice,
-        display_price_description: listingData.priceDescription,
-        cleaning_fee: listingData.cleaningFee,
-        additional_guest_fee: listingData.additionalGuestFee,
-        number_of_guests: listingData.numberOfGuests,
-        number_of_bedrooms: listingData.numberOfBedrooms,
-        number_of_beds: listingData.numberOfBeds,
-        number_of_bathrooms: listingData.numberOfBathrooms,
-        house_rules: listingData.houseRules,
-        cancellation_policy: listingData.cancellationPolicy,
-        other_things_to_note: listingData.otherThingsToNote,
-        order_position: nextOrderPosition,
-        is_active: listingData.isActive !== undefined ? listingData.isActive : true
-      })
-      .select()
-      .single();
-    
-    if (propertyError) {
-      console.error('Error creating property:', propertyError);
-      return NextResponse.json(
-        { error: 'Failed to create property' },
-        { status: 500 }
-      );
+    // Location validation
+    const locationFields = ['street', 'city', 'state', 'country', 'latitude', 'longitude'];
+    for (const field of locationFields) {
+      if (!data.location[field]) {
+        return NextResponse.json({ 
+          error: `Missing required location field: ${field}` 
+        }, { status: 400 });
+      }
     }
     
-    // If amenities were provided, insert them
-    if (listingData.amenities && listingData.amenities.length > 0) {
-      const amenityEntries = listingData.amenities.map(amenityId => ({
-        property_id: propertyData.property_id,
-        amenity_id: amenityId
-      }));
+    // 1. First, create the location
+    const locationData = {
+      address: data.location.address || `${data.location.street}, ${data.location.city}, ${data.location.state}`,
+      street: data.location.street,
+      apt: data.location.apt || '',
+      city: data.location.city,
+      state: data.location.state,
+      zip: data.location.zip || '',
+      country: data.location.country,
+      latitude: data.location.latitude,
+      longitude: data.location.longitude
+    };
+    
+    const location = await locationsService.save(locationData);
+    
+    // 2. Create the property
+    const propertyData = {
+      host_id: payload.admin_id,
+      title: data.title,
+      description: data.description || '',
+      price: data.price,
+      price_description: data.price_description,
+      currency: data.currency || 'USD',
+      main_image: data.main_image || null,
+      side_image1: data.side_image1 || null,
+      side_image2: data.side_image2 || null,
+      location_id: location.id,
+      number_of_guests: data.number_of_guests,
+      number_of_bedrooms: data.number_of_bedrooms,
+      number_of_beds: data.number_of_beds,
+      number_of_bathrooms: data.number_of_bathrooms,
+      additional_info: data.additional_info || '',
+      is_active: data.is_active !== undefined ? data.is_active : true
+    };
+    
+    const property = await propertiesService.save(propertyData);
+    
+    // 3. Add extra images if provided
+    if (data.extra_images && Array.isArray(data.extra_images) && data.extra_images.length > 0) {
+      const imagePromises = data.extra_images.map(imageUrl => 
+        propertyImagesService.save({
+          property_id: property.id,
+          image_url: imageUrl
+        })
+      );
       
-      const { error: amenitiesError } = await supabase
-        .from('PropertyAmenities')
-        .insert(amenityEntries);
+      await Promise.all(imagePromises);
+    }
+    
+    // 4. Add amenities if provided
+    if (data.amenities && typeof data.amenities === 'object') {
+      // Fetch all amenities to get IDs
+      const allAmenities = await amenitiesService.get_all();
+      const amenityMap = {};
       
-      if (amenitiesError) {
-        console.error('Error adding amenities:', amenitiesError);
-        // We don't return an error here, as the property was created successfully
+      // Create a map of amenity name to ID for quick lookup
+      allAmenities.forEach(amenity => {
+        amenityMap[amenity.name] = amenity.id;
+      });
+      
+      // Process each amenity category
+      const amenityPromises = [];
+      
+      for (const [category, amenities] of Object.entries(data.amenities)) {
+        for (const [amenityName, isSelected] of Object.entries(amenities)) {
+          if (isSelected && amenityMap[amenityName]) {
+            amenityPromises.push(
+              propertyAmenitiesService.save({
+                property_id: property.id,
+                amenity_id: amenityMap[amenityName]
+              })
+            );
+          }
+        }
+      }
+      
+      if (amenityPromises.length > 0) {
+        await Promise.all(amenityPromises);
       }
     }
     
     return NextResponse.json({
       success: true,
-      property: propertyData
+      message: 'Property created successfully',
+      propertyId: property.id
     });
   } catch (error) {
-    console.error('Error in listings POST:', error);
-    return NextResponse.json(
-      { error: 'Server error' },
-      { status: 500 }
-    );
+    console.error('Create listing error:', error);
+    return NextResponse.json({ 
+      error: 'Failed to create listing' 
+    }, { status: 500 });
   }
 }
+
+// import { NextResponse } from 'next/server';
+
+
+// // GET all listings
+// export async function GET(request) {
+//   try {
+
+//   } catch (error) {
+
+    
+//   }
+// }
+
+// // POST a new listing (admin only)
+// export async function POST(request) {
+//   try {
+
+//   } catch (error) {
+
+//   }
+// }

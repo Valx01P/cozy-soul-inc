@@ -1,73 +1,68 @@
+// src/app/api/auth/login/route.js
+import { NextResponse } from 'next/server'
+import supabase from '@/app/services/supabase'
+import { generateAccessToken, generateRefreshToken, setAuthCookies } from '@/app/lib/auth'
 
-import { NextResponse } from 'next/server';
-import supabase from '@/app/services/supabase';
-import { 
-  generateAccessToken, 
-  generateRefreshToken, 
-  setAuthCookies, 
-  storeRefreshToken,
-  verifyPassword
-} from '@/app/lib/auth';
-
+/**
+ * Handles admin login with email and password
+ * Returns JWT tokens for authenticated users
+ * 
+ * @example Request Body:
+ * {
+ *   "email": "admin@example.com",
+ *   "password": "password123"
+ * }
+ */
 export async function POST(request) {
   try {
-    const { email, password } = await request.json();
+    const { email, password } = await request.json()
     
+    // Validate input
     if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Email and password are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: 'Email and password are required' }, { status: 400 })
     }
     
-    // Fetch the admin with the provided email
-    const { data: admin, error } = await supabase
-      .from('Admins')
-      .select('*')
-      .eq('email', email.toLowerCase())
-      .single();
+    // Query for admin with matching email
+    const { data: admins, error: aError } = await supabase.from('admins').select('*').eq('email', email)
     
-    if (error || !admin) {
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      );
+    if (aError) {
+      throw new Error(`Error fetching admin, ${aError.message}`)
+    } else if (!admins || admins.length === 0) {
+      return NextResponse.json({ message: 'Admin not found' }, { status: 404 })
     }
     
-    // Verify password
-    const isPasswordValid = verifyPassword(password, admin.hashed_password);
+    const admin = admins[0]
     
-    if (!isPasswordValid) {
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      );
+    // For testing purposes, we're using unhashed passwords
+    // In production, you would use bcrypt.compare() or similar
+    if (admin.password !== password) {
+      return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 })
     }
     
-    // Generate tokens
-    const accessToken = generateAccessToken({ sub: admin.admin_id });
-    const refreshToken = generateRefreshToken({ sub: admin.admin_id });
+    // Admin is authenticated, generate tokens
+    const payload = {
+      admin_id: admin.id,
+      email: admin.email,
+      username: admin.username
+    }
     
-    // Store refresh token in database
-    await storeRefreshToken(admin.admin_id, refreshToken);
+    const accessToken = generateAccessToken(payload)
+    const refreshToken = generateRefreshToken(payload)
+
+    // Set HTTP-only cookies
+    await setAuthCookies(accessToken, refreshToken)
     
-    // Set auth cookies
-    setAuthCookies(accessToken, refreshToken);
+    // Return tokens in response for testing with Postman
+    const response = {
+      message: 'Login successful',
+      first_name: admin.first_name,
+      last_name: admin.last_name,
+      email: admin.email,
+      username: admin.username
+    }
     
-    // Return success with user info (exclude sensitive data)
-    return NextResponse.json({
-      admin: {
-        id: admin.admin_id,
-        email: admin.email,
-        firstName: admin.first_name,
-        lastName: admin.last_name
-      }
-    });
+    return NextResponse.json(response, { status: 200 })
   } catch (error) {
-    console.error('Login error:', error);
-    return NextResponse.json(
-      { error: 'Authentication failed' },
-      { status: 500 }
-    );
+    return NextResponse.json(error.message, { status: 500 })
   }
 }

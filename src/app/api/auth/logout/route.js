@@ -1,18 +1,21 @@
 // src/app/api/auth/logout/route.js
-import { NextResponse } from 'next/server';
-import { clearAuthCookies } from '@/app/lib/auth';
+import { NextResponse } from 'next/server'
+import { clearAuthCookies } from '@/app/lib/auth'
 
+/**
+ * Handles user logout by clearing auth cookies
+ */
 export async function POST() {
   try {
-    // Clear auth cookies
-    clearAuthCookies();
+    // Clear authentication cookies
+    await clearAuthCookies()
+
+    const response = {
+      message: 'Logged out successfully'
+    }
     
-    return NextResponse.json({ success: true });
+    return NextResponse.json(response, { status: 200 })
   } catch (error) {
-    console.error('Logout error:', error);
-    return NextResponse.json(
-      { error: 'Server error' },
-      { status: 500 }
-    );
+    return NextResponse.json(error.message, { status: 500 })
   }
 }
