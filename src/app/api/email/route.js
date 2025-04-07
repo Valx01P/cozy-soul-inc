@@ -7,8 +7,42 @@ import ListingEmail from '@/app/components/emails/ListingEmail'
 // Initialize Resend
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-export async function POST(request) {
+
+const requestCounts = {}
+
+// Function to check if the request rate exceeds the limit
+function isRateLimited (ip) {
+  const requestLimit = 3 // Limiting to 2 requests per 10 minutes
+  const interval = 10 * 60 * 1000 // 10 minutes
+
+  // Initialize request count if not already present
+  requestCounts[ip] = requestCounts[ip] || []
+
+  // Remove requests older than 1 minute
+  requestCounts[ip] = requestCounts[ip].filter(({ timestamp }) => timestamp > Date.now() - interval)
+
+  // Check if request count exceeds limit
+  if (requestCounts[ip].length >= requestLimit) {
+    return true // Rate limit exceeded
+  }
+
+  // Increment request count
+  requestCounts[ip].push({ timestamp: Date.now() })
+  return false // Rate limit not exceeded
+}
+
+
+export async function POST(request) {  
   try {
+
+    // Get IP address of requester
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || request.headers.get('remote_addr') || request.connection.remoteAddress
+
+    // Check if request is rate limited
+    if (isRateLimited(ip)) {
+      return new Response({ message: 'Too many requests'}, { status: 429 })
+    }
+
     const { name, email, phone, message, propertyid } = await request.json()
     
     // Validate inputs
