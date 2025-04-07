@@ -25,15 +25,13 @@ export async function GET(request) {
     }
     
     // Get admin info from database
-    const { data: admins, error: aError } = await supabase.from('admins').select('*').eq('id', payload.admin_id)
+    const { data: admin, error: aError } = await supabase.from('admins').select('*').eq('id', payload.admin_id).single()
     
     if (aError) {
       throw new Error(`Error fetching admin, ${aError.message}`)
-    } else if (!admins || admins.length === 0) {
+    } else if (!admin) {
       return NextResponse.json({ message: 'Admin not found' }, { status: 404 })
     }
-
-    const admin = admins[0]
     
     const response = {
       first_name: admin.first_name,

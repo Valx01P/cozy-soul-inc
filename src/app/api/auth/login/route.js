@@ -23,16 +23,14 @@ export async function POST(request) {
     }
     
     // Query for admin with matching email
-    const { data: admins, error: aError } = await supabase.from('admins').select('*').eq('email', email)
+    const { data: admin, error: aError } = await supabase.from('admins').select('*').eq('email', email).single()
     
     if (aError) {
       throw new Error(`Error fetching admin, ${aError.message}`)
-    } else if (!admins || admins.length === 0) {
+    } else if (!admin) {
       return NextResponse.json({ message: 'Admin not found' }, { status: 404 })
     }
-    
-    const admin = admins[0]
-    
+        
     // For testing purposes, we're using unhashed passwords
     // In production, you would use bcrypt.compare() or similar
     if (admin.password !== password) {

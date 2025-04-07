@@ -1,100 +1,69 @@
-import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
-import supabase from '@/app/services/supabase';
+import { NextResponse } from 'next/server'
+import { Resend } from 'resend'
+import supabase from '@/app/services/supabase'
+import GeneralEmail from '@/app/components/emails/GeneralEmail'
+import ListingEmail from '@/app/components/emails/ListingEmail'
 
 // Initialize Resend
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(request) {
   try {
-    const { name, email, phone, message, propertyId } = await request.json();
+    const { name, email, phone, message, propertyid } = await request.json()
     
     // Validate inputs
     if (!name || !email || !message) {
-      return NextResponse.json(
-        { error: 'Name, email and message are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: 'Name, email and message are required' }, { status: 400 })
     }
     
-    // Get property details if a propertyId was provided
-    let propertyDetails = null;
-    if (propertyId) {
+    // Get property details if a propertyid was provided
+    let propertyDetails = null
+
+    // Check if a propertyid was provided or not, this helps to determine the email template to use
+    // If a propertyid is provided, fetch the property details from the database
+    // If not, use the general email template for contact form submissions
+    if (propertyid) {
       const { data: property, error } = await supabase
-        .from('Properties')
-        .select(`
-          title,
-          display_price,
-          display_price_description,
-          location_id,
-          Locations(city, state, country)
-        `)
-        .eq('property_id', propertyId)
-        .single();
+        .from('properties').select(`title, main_image, price, price_description, locations(city, state, country)`)
+        .eq('id', propertyid)
+        .single()
       
       if (!error && property) {
         propertyDetails = {
+          id: propertyid,
           title: property.title,
-          price: `${property.display_price} ${property.display_price_description}`,
-          location: `${property.Locations.city}, ${property.Locations.state}, ${property.Locations.country}`
-        };
+          main_image_url: property.main_image,
+          price: `${property.price} • ${property.price_description}`,
+          location: `${property.locations.city}, ${property.locations.state}, ${property.locations.country}`
+        }
       }
     }
-    
-    // Get admin email
-    const adminEmail = process.env.ADMIN_EMAIL;
-    
-    // Construct email content
-    let emailSubject = 'New inquiry from your rental website';
-    if (propertyDetails) {
-      emailSubject = `Inquiry about: ${propertyDetails.title}`;
-    }
-    
-    let emailContent = `
-      <h2>You have a new inquiry${propertyDetails ? ' about a property' : ''}!</h2>
-      <p><strong>From:</strong> ${name}</p>
-      <p><strong>Email:</strong> ${email}</p>
-      ${phone ? `<p><strong>Phone:</strong> ${phone}</p>` : ''}
-      <h3>Message:</h3>
-      <p>${message.replace(/\n/g, '<br>')}</p>
-    `;
-    
-    if (propertyDetails) {
-      emailContent += `
-        <h3>Property Details:</h3>
-        <p><strong>Title:</strong> ${propertyDetails.title}</p>
-        <p><strong>Price:</strong> ${propertyDetails.price}</p>
-        <p><strong>Location:</strong> ${propertyDetails.location}</p>
-        <p><a href="${process.env.NEXT_PUBLIC_BASE_URL}/listings/${propertyId}">View Property</a></p>
-      `;
-    }
+
+    const emailSubject = propertyDetails ? `New inquiry about ${propertyDetails.title}` : 'New inquiry from your rental website'
     
     // Send the email
     const { data, error } = await resend.emails.send({
-      from: 'Rental Website <noreply@yourdomain.com>',
-      to: adminEmail,
+      from: 'Rental Website <noreply@scriptphi.com>',
+      to: process.env.ADMIN_EMAIL,
       subject: emailSubject,
-      html: emailContent,
-      reply_to: email
-    });
+      react: propertyDetails ? (
+        ListingEmail({ name, email, phone, message, propertyDetails })
+      ) : (
+        GeneralEmail({ name, email, phone, message })
+      ),
+    })
     
     if (error) {
-      console.error('Error sending email:', error);
-      return NextResponse.json(
-        { error: 'Failed to send email' },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: `Failed to send email ${error.message}` }, { status: 500 })
+    }
+
+    const response = {
+      message: 'Email sent successfully',
+      data: data
     }
     
-    return NextResponse.json({
-      success: true,
-      message: 'Email sent successfully'
-    });
+    return NextResponse.json(response, { status: 200 })
   } catch (error) {
-    console.error('Email sending error:', error);
-    return NextResponse.json(
-      { error: 'Server error' },
-      { status: 500 }
-    );
+    return NextResponse.json(error.message, { status: 500 })
   }
 }
