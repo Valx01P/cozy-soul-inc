@@ -1,9 +1,8 @@
 // src/app/api/upload/route.js
-import { NextResponse } from 'next/server';
-import SupabaseService from '@/app/services/SupabaseService';
-import { verifyToken } from '@/app/lib/auth';
+import { NextResponse } from 'next/server'
+import { verifyToken, getAuthTokens } from '@/app/lib/auth'
+import supabase from '@/app/services/supabase'
 
-const storageService = new SupabaseService('property-images');
 
 /**
  * Handles file uploads to Supabase storage
@@ -24,54 +23,64 @@ const storageService = new SupabaseService('property-images');
  */
 export async function POST(request) {
   try {
-    // Verify the user's JWT token (admin only)
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { accessToken } = await getAuthTokens(request)
+
+    if (!accessToken) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
     
-    const token = authHeader.split(' ')[1];
-    const payload = await verifyToken(token);
+    const payload = await verifyToken(accessToken)
     
     if (!payload || !payload.admin_id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
     // Process the multipart form data
-    const formData = await request.formData();
-    const files = formData.getAll('images');
+    const formData = await request.formData()
+    const files = formData.getAll('images')
     
     if (!files || files.length === 0) {
-      return NextResponse.json({ error: 'No files provided' }, { status: 400 });
+      return NextResponse.json({ message: 'No files provided' }, { status: 400 })
     }
 
     // Upload each file to Supabase storage
     const uploadPromises = files.map(async (file) => {
       // Generate a unique filename to avoid collisions
-      const timestamp = Date.now();
-      const randomString = Math.random().toString(36).substring(2, 10);
-      const originalName = file.name.replace(/\s+/g, '-').toLowerCase();
-      const fileName = `${timestamp}-${randomString}-${originalName}`;
+      const timestamp = Date.now()
+      const randomString = Math.random().toString(36).substring(2, 10)
+      const originalName = file.name.replace(/\s+/g, '-').toLowerCase()
+      const fileName = `${timestamp}-${randomString}-${originalName}`
       
       // Determine the content type
-      const contentType = file.type;
+      const contentType = file.type
       
       // Upload to Supabase
-      await storageService.upload_image('property-images', fileName, file, contentType);
-      
+      await supabase.storage
+        .from('property-images')
+        .upload(fileName, file, {
+          contentType: contentType,
+          cacheControl: '3600',
+          upsert: true
+        })
+
       // Return the public URL
-      return storageService.get_image_url('property-images', fileName);
-    });
+      const { data, error } = await supabase.storage
+        .from('property-images')
+        .getPublicUrl(fileName)
 
-    const urls = await Promise.all(uploadPromises);
+      if (error) {
+        throw new Error(`Failed to get public URL, ${error.message}`)
+      }
 
-    return NextResponse.json({
-      success: true,
-      urls
-    });
+      return data.publicUrl
+    })
+
+    const urls = await Promise.all(uploadPromises)
+
+    return NextResponse.json(urls, { status: 200 })
   } catch (error) {
-    console.error('Upload error:', error);
-    return NextResponse.json({ error: 'Failed to upload files' }, { status: 500 });
+    return NextResponse.json(error.message, { status: 500 })
   }
 }
 
@@ -90,54 +99,44 @@ export async function POST(request) {
  */
 export async function DELETE(request) {
   try {
-    // Verify the user's JWT token (admin only)
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { accessToken } = await getAuthTokens(request)
+
+    if (!accessToken) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
     
-    const token = authHeader.split(' ')[1];
-    const payload = await verifyToken(token);
+    const payload = await verifyToken(accessToken)
     
     if (!payload || !payload.admin_id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
     // Get the file path from the request body
-    const { filePath } = await request.json();
+    const { filepath } = await request.json()
     
-    if (!filePath) {
-      return NextResponse.json({ error: 'File path is required' }, { status: 400 });
+    if (!filepath) {
+      return NextResponse.json({ message: 'File path is required' }, { status: 400 })
     }
 
     // Extract just the filename from the URL or path
-    const fileName = filePath.split('/').pop();
+    const fileName = filepath.split('/').pop()
     
     // Delete from Supabase storage
-    await storageService.delete_image('property-images', fileName);
+    const { error } = await supabase.storage
+      .from('property-images')
+      .remove([fileName])
 
-    return NextResponse.json({
-      success: true,
+    if (error) {
+      throw new Error(`Failed to delete file, ${error.message}`)
+    }
+
+    const response = {
       message: 'File deleted successfully'
-    });
+    }
+
+    return NextResponse.json(response, { status: 200 })
   } catch (error) {
-    console.error('Delete error:', error);
-    return NextResponse.json({ error: 'Failed to delete file' }, { status: 500 });
+    return NextResponse.json(error.message, { status: 500 })
   }
 }
-
-// import { NextResponse } from 'next/server';
-
-
-
-// export async function POST(request) {
-
-  
-// }
-
-
-// // Endpoint to delete an image
-// export async function DELETE(request) {
-
-  
-// }

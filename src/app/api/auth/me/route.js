@@ -21,7 +21,7 @@ export async function GET(request) {
     const payload = await verifyToken(accessToken)
     
     if (!payload || !payload.admin_id) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
     }
     
     // Get admin info from database
