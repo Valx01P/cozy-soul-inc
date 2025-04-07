@@ -1,31 +1,19 @@
 // src/app/api/listings/[id]/route.js
-import { NextResponse } from 'next/server';
-import SupabaseService from '@/app/services/SupabaseService';
-import { verifyToken, getAuthTokens } from '@/app/lib/auth';
-import supabase from '@/app/services/supabase';
-
-const propertiesService = new SupabaseService('Properties');
-const locationsService = new SupabaseService('Locations');
-const propertyImagesService = new SupabaseService('PropertyImages');
-const propertyAmenitiesService = new SupabaseService('PropertyAmenities');
+import { NextResponse } from 'next/server'
+import { verifyToken, getAuthTokens } from '@/app/lib/auth'
+import supabase from '@/app/services/supabase'
 
 /**
  * GET a single listing by ID
- * Returns detailed property information with amenities
+ * Returns detailed information about the property
  */
 export async function GET(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params
     
-    if (!id || isNaN(parseInt(id))) {
-      return NextResponse.json({ 
-        error: 'Invalid property ID' 
-      }, { status: 400 });
-    }
-    
-    // Fetch property with related data
+    // Query for the property with joins for location and images
     const { data: property, error } = await supabase
-      .from('Properties')
+      .from('properties')
       .select(`
         id, 
         host_id, 
@@ -45,7 +33,7 @@ export async function GET(request, { params }) {
         is_active, 
         created_at, 
         updated_at,
-        Locations!inner(
+        locations(
           id, 
           address, 
           street, 
@@ -57,77 +45,67 @@ export async function GET(request, { params }) {
           latitude, 
           longitude
         ),
-        PropertyImages(id, image_url)
+        propertyimages(id, image_url)
       `)
       .eq('id', id)
-      .single();
+      .single()
     
     if (error) {
       if (error.code === 'PGRST116') {
-        return NextResponse.json({ 
-          error: 'Property not found' 
-        }, { status: 404 });
+        return NextResponse.json({ error: 'Property not found' }, { status: 404 })
       }
-      throw new Error(`Error fetching property: ${error.message}`);
+      throw new Error(`Error fetching property: ${error.message}`)
     }
     
-    if (!property) {
-      return NextResponse.json({ 
-        error: 'Property not found' 
-      }, { status: 404 });
-    }
-    
-    // Fetch amenities for this property
+    // Fetch amenities for this property with categories
     const { data: amenitiesData, error: amenitiesError } = await supabase
-      .from('PropertyAmenities')
+      .from('propertyamenities')
       .select(`
-        Amenities(
+        amenities(
           id,
           name,
-          category_id,
-          AmenitiesCategories(name)
+          svg,
+          amenitiescategories(id, name)
         )
       `)
-      .eq('property_id', id);
+      .eq('property_id', id)
     
     if (amenitiesError) {
-      throw new Error(`Error fetching amenities: ${amenitiesError.message}`);
+      throw new Error(`Error fetching amenities: ${amenitiesError.message}`)
     }
     
     // Organize amenities by category
-    const amenities = {};
+    const amenities = {}
     
     amenitiesData?.forEach(item => {
-      const amenity = item.Amenities;
-      const categoryName = amenity.AmenitiesCategories.name;
+      const amenity = item.amenities
+      const categoryName = amenity.amenitiescategories.name
       
       if (!amenities[categoryName]) {
-        amenities[categoryName] = {};
+        amenities[categoryName] = []
       }
       
-      amenities[categoryName][amenity.name] = true;
-    });
+      amenities[categoryName].push({
+        name: amenity.name,
+        svg: amenity.svg
+      })
+    })
     
-    // Format location
+    // Format the response
     const location = {
-      address: property.Locations.address || `${property.Locations.street}, ${property.Locations.city}, ${property.Locations.state}`,
-      street: property.Locations.street,
-      apt: property.Locations.apt || '',
-      city: property.Locations.city,
-      state: property.Locations.state,
-      zip: property.Locations.zip,
-      country: property.Locations.country,
-      latitude: property.Locations.latitude,
-      longitude: property.Locations.longitude
-    };
-
+      address: property.locations.address || `${property.locations.street}, ${property.locations.city}, ${property.locations.state}`,
+      street: property.locations.street,
+      apt: property.locations.apt || '',
+      city: property.locations.city,
+      state: property.locations.state,
+      zip: property.locations.zip,
+      country: property.locations.country,
+      latitude: property.locations.latitude,
+      longitude: property.locations.longitude
+    }
     
-    // Format extra images
-// src/app/api/listings/[id]/route.js (continued)
-    // Format extra images
-    const extraImages = property.PropertyImages?.map(img => img.image_url) || [];
+    const extraImages = property.propertyimages.map(img => img.image_url)
     
-    // Format response
     const formattedProperty = {
       id: property.id,
       host_id: property.host_id,
@@ -150,70 +128,119 @@ export async function GET(request, { params }) {
       is_active: property.is_active,
       created_at: property.created_at,
       updated_at: property.updated_at
-    };
+    }
     
-    return NextResponse.json(formattedProperty);
+    return NextResponse.json(formattedProperty)
   } catch (error) {
-    console.error('Fetch property error:', error);
+    console.error('Get listing error:', error)
     return NextResponse.json({ 
-      error: 'Failed to fetch property details' 
-    }, { status: 500 });
+      error: 'Failed to fetch listing' 
+    }, { status: 500 })
   }
 }
 
 /**
- * PUT to update a listing (admin only)
- * Updates property details, location and amenities
+ * Helper function to delete an image from Supabase storage
+ * @param {string} imageUrl - URL of the image to delete
+ */
+async function deleteImageFromStorage(imageUrl) {
+  if (!imageUrl) return
+  
+  try {
+    // Extract the filename from the URL
+    const fileName = imageUrl.split('/').pop()
+    
+    // Delete from Supabase storage
+    const { error } = await supabase.storage
+      .from('property-images')
+      .remove([fileName])
+    
+    if (error) {
+      console.error(`Failed to delete image from storage: ${error.message}`)
+    }
+  } catch (err) {
+    console.error(`Error in deleteImageFromStorage: ${err.message}`)
+  }
+}
+
+/**
+ * PUT update a listing by ID (admin only)
+ * Requires authentication and updates property, location, images and amenities
+ * Also properly handles image deletion from storage
  */
 export async function PUT(request, { params }) {
   try {
-    const { id } = params;
-    
-    if (!id || isNaN(parseInt(id))) {
-      return NextResponse.json({ 
-        error: 'Invalid property ID' 
-      }, { status: 400 });
-    }
+    const { id } = await params
     
     // Verify the user's JWT token (admin only)
-    const { accessToken } = getAuthTokens(request);
+    const { accessToken } = await getAuthTokens(request)
     
     if (!accessToken) {
       return NextResponse.json({ 
         error: 'Unauthorized' 
-      }, { status: 401 });
+      }, { status: 401 })
     }
     
-    const payload = await verifyToken(accessToken);
+    const payload = await verifyToken(accessToken)
     
     if (!payload || !payload.admin_id) {
       return NextResponse.json({ 
         error: 'Unauthorized' 
-      }, { status: 401 });
-    }
-    
-    // Get existing property to verify ownership and location_id
-    const existingProperty = await propertiesService.get_by_id(id);
-    
-    if (!existingProperty) {
-      return NextResponse.json({ 
-        error: 'Property not found' 
-      }, { status: 404 });
-    }
-    
-    // Optional: Verify that the admin is the host of this property
-    if (existingProperty.host_id !== payload.admin_id) {
-      return NextResponse.json({ 
-        error: 'You do not have permission to update this property' 
-      }, { status: 403 });
+      }, { status: 401 })
     }
     
     // Parse request body
-    const data = await request.json();
+    const data = await request.json()
     
-    // 1. Update location if provided
-    if (data.location) {
-      const locationData = {
+    // Validate required fields
+    const requiredFields = ['title', 'price', 'price_description', 'location', 'number_of_guests', 'number_of_bedrooms', 'number_of_beds', 'number_of_bathrooms']
+    
+    for (const field of requiredFields) {
+      if (!data[field]) {
+        return NextResponse.json({ 
+          error: `Missing required field: ${field}` 
+        }, { status: 400 })
+      }
+    }
+    
+    // Location validation
+    const locationFields = ['street', 'city', 'state', 'country', 'latitude', 'longitude']
+    for (const field of locationFields) {
+      if (!data.location[field]) {
+        return NextResponse.json({ 
+          error: `Missing required location field: ${field}` 
+        }, { status: 400 })
+      }
+    }
+    
+    // Verify property exists and get current property data
+    const { data: existingProperty, error: propertyError } = await supabase
+      .from('properties')
+      .select('location_id, main_image, side_image1, side_image2')
+      .eq('id', id)
+      .single()
+    
+    if (propertyError) {
+      if (propertyError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Property not found' }, { status: 404 })
+      }
+      throw new Error(`Error fetching property: ${propertyError.message}`)
+    }
+    
+    // Get current extra images
+    const { data: existingImages, error: imagesError } = await supabase
+      .from('propertyimages')
+      .select('image_url')
+      .eq('property_id', id)
+    
+    if (imagesError) {
+      throw new Error(`Error fetching property images: ${imagesError.message}`)
+    }
+    
+    // 1. Update the location
+    const { error: locationError } = await supabase
+      .from('locations')
+      .update({
         address: data.location.address || `${data.location.street}, ${data.location.city}, ${data.location.state}`,
         street: data.location.street,
         apt: data.location.apt || '',
@@ -223,237 +250,317 @@ export async function PUT(request, { params }) {
         country: data.location.country,
         latitude: data.location.latitude,
         longitude: data.location.longitude
-      };
-      
-      await locationsService.update(existingProperty.location_id, locationData);
+      })
+      .eq('id', existingProperty.location_id)
+    
+    if (locationError) {
+      throw new Error(`Error updating location: ${locationError.message}`)
     }
     
-    // 2. Update property
-    const propertyData = {
-      title: data.title,
-      description: data.description,
-      price: data.price,
-      price_description: data.price_description,
-      currency: data.currency,
-      main_image: data.main_image,
-      side_image1: data.side_image1,
-      side_image2: data.side_image2,
-      number_of_guests: data.number_of_guests,
-      number_of_bedrooms: data.number_of_bedrooms,
-      number_of_beds: data.number_of_beds,
-      number_of_bathrooms: data.number_of_bathrooms,
-      additional_info: data.additional_info,
-      is_active: data.is_active,
-      updated_at: new Date().toISOString()
-    };
+    // 2. Handle main image and side images - delete from storage if they've changed
+    if (existingProperty.main_image && existingProperty.main_image !== data.main_image) {
+      await deleteImageFromStorage(existingProperty.main_image)
+    }
     
-    // Remove undefined fields to avoid overwriting with null
-    Object.keys(propertyData).forEach(key => {
-      if (propertyData[key] === undefined) {
-        delete propertyData[key];
-      }
-    });
+    if (existingProperty.side_image1 && existingProperty.side_image1 !== data.side_image1) {
+      await deleteImageFromStorage(existingProperty.side_image1)
+    }
     
-    await propertiesService.update(id, propertyData);
+    if (existingProperty.side_image2 && existingProperty.side_image2 !== data.side_image2) {
+      await deleteImageFromStorage(existingProperty.side_image2)
+    }
     
-    // 3. Update extra images if provided
+    // 3. Update the property
+    const { error: updatePropertyError } = await supabase
+      .from('properties')
+      .update({
+        title: data.title,
+        description: data.description || '',
+        price: data.price,
+        price_description: data.price_description,
+        currency: data.currency || 'USD',
+        main_image: data.main_image || null,
+        side_image1: data.side_image1 || null,
+        side_image2: data.side_image2 || null,
+        number_of_guests: data.number_of_guests,
+        number_of_bedrooms: data.number_of_bedrooms,
+        number_of_beds: data.number_of_beds,
+        number_of_bathrooms: data.number_of_bathrooms,
+        additional_info: data.additional_info || '',
+        is_active: data.is_active !== undefined ? data.is_active : true,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+    
+    if (updatePropertyError) {
+      throw new Error(`Error updating property: ${updatePropertyError.message}`)
+    }
+    
+    // 4. Handle extra images
     if (data.extra_images && Array.isArray(data.extra_images)) {
-      // First delete existing extra images
-      await propertyImagesService.delete_by_field('property_id', id);
+      // Find images that were removed
+      const newImageUrls = new Set(data.extra_images)
+      const imagesToDelete = existingImages
+        .filter(img => !newImageUrls.has(img.image_url))
+        .map(img => img.image_url)
       
-      // Then add new ones
+      // Delete removed images from storage
+      for (const imageUrl of imagesToDelete) {
+        await deleteImageFromStorage(imageUrl)
+      }
+      
+      // Delete all existing extra images from the database
+      const { error: deleteImagesError } = await supabase
+        .from('propertyimages')
+        .delete()
+        .eq('property_id', id)
+      
+      if (deleteImagesError) {
+        throw new Error(`Error deleting existing images: ${deleteImagesError.message}`)
+      }
+      
+      // Add new images if provided
       if (data.extra_images.length > 0) {
-        const imagePromises = data.extra_images.map(imageUrl => 
-          propertyImagesService.save({
-            property_id: id,
-            image_url: imageUrl
-          })
-        );
+        const extraImagesData = data.extra_images.map(image_url => ({
+          property_id: id,
+          image_url
+        }))
         
-        await Promise.all(imagePromises);
+        const { error: imagesError } = await supabase
+          .from('propertyimages')
+          .insert(extraImagesData)
+        
+        if (imagesError) {
+          throw new Error(`Error adding extra images: ${imagesError.message}`)
+        }
       }
     }
     
-    // 4. Update amenities if provided
+    // 5. Handle amenities if provided - delete existing and add new ones
     if (data.amenities && typeof data.amenities === 'object') {
-      // Fetch all amenities to get IDs
-      const { data: allAmenities, error } = await supabase
-        .from('Amenities')
-        .select('id, name');
+      // Delete existing amenities
+      const { error: deleteAmenitiesError } = await supabase
+        .from('propertyamenities')
+        .delete()
+        .eq('property_id', id)
       
-      if (error) {
-        throw new Error(`Error fetching amenities: ${error.message}`);
+      if (deleteAmenitiesError) {
+        throw new Error(`Error deleting existing amenities: ${deleteAmenitiesError.message}`)
       }
       
-      const amenityMap = {};
+      // First, fetch all categories to get the category IDs
+      const { data: categories, error: categoriesError } = await supabase
+        .from('amenitiescategories')
+        .select('id, name')
       
-      // Create a map of amenity name to ID for quick lookup
-      allAmenities.forEach(amenity => {
-        amenityMap[amenity.name] = amenity.id;
-      });
+      if (categoriesError) {
+        throw new Error(`Error fetching amenity categories: ${categoriesError.message}`)
+      }
       
-      // First delete existing property amenities
-      await propertyAmenitiesService.delete_by_field('property_id', id);
+      const categoryMap = {}
+      categories.forEach(category => {
+        categoryMap[category.name] = category.id
+      })
       
-      // Then add new ones
-      const amenityPromises = [];
+      // Now fetch all amenities with their categories
+      const { data: allAmenities, error: amenitiesError } = await supabase
+        .from('amenities')
+        .select('id, name, category_id')
       
-      for (const category of Object.values(data.amenities)) {
-        for (const [amenityName, isSelected] of Object.entries(category)) {
-          if (isSelected && amenityMap[amenityName]) {
-            amenityPromises.push(
-              propertyAmenitiesService.save({
+      if (amenitiesError) {
+        throw new Error(`Error fetching amenities: ${amenitiesError.message}`)
+      }
+      
+      // Process each amenity category from the request
+      const propertyAmenitiesData = []
+      
+      for (const [categoryName, amenities] of Object.entries(data.amenities)) {
+        // Get the correct category ID for this category
+        const categoryId = categoryMap[categoryName]
+        
+        if (!categoryId) {
+          console.warn(`Unknown amenity category: ${categoryName}`)
+          continue
+        }
+        
+        if (Array.isArray(amenities)) {
+          // If amenities is an array of objects
+          amenities.forEach(amenity => {
+            // Find the amenity that matches both the name AND the category
+            const matchedAmenity = allAmenities.find(a => 
+              a.name === amenity.name && a.category_id === categoryId
+            )
+            
+            if (matchedAmenity) {
+              propertyAmenitiesData.push({
                 property_id: id,
-                amenity_id: amenityMap[amenityName]
+                amenity_id: matchedAmenity.id
               })
-            );
+            } else {
+              console.warn(`Amenity not found or wrong category: ${amenity.name} in ${categoryName}`)
+            }
+          })
+        } else {
+          // If amenities is an object with name:boolean pairs
+          for (const [amenityName, isSelected] of Object.entries(amenities)) {
+            if (isSelected) {
+              // Find the amenity that matches both the name AND the category
+              const matchedAmenity = allAmenities.find(a => 
+                a.name === amenityName && a.category_id === categoryId
+              )
+              
+              if (matchedAmenity) {
+                propertyAmenitiesData.push({
+                  property_id: id,
+                  amenity_id: matchedAmenity.id
+                })
+              } else {
+                console.warn(`Amenity not found or wrong category: ${amenityName} in ${categoryName}`)
+              }
+            }
           }
         }
       }
       
-      if (amenityPromises.length > 0) {
-        await Promise.all(amenityPromises);
+      if (propertyAmenitiesData.length > 0) {
+        const { error: insertError } = await supabase
+          .from('propertyamenities')
+          .insert(propertyAmenitiesData)
+        
+        if (insertError) {
+          throw new Error(`Error adding amenities: ${insertError.message}`)
+        }
       }
     }
     
     return NextResponse.json({
       success: true,
-      message: 'Property updated successfully'
-    });
+      message: 'Property updated successfully',
+      propertyId: id
+    })
   } catch (error) {
-    console.error('Update property error:', error);
+    console.error('Update listing error:', error)
     return NextResponse.json({ 
-      error: 'Failed to update property' 
-    }, { status: 500 });
+      error: 'Failed to update listing' 
+    }, { status: 500 })
   }
 }
 
 /**
- * DELETE a listing (admin only)
- * Removes property and related data
+ * DELETE a listing by ID (admin only)
+ * Requires authentication and removes property and all related data
+ * Also deletes images from Supabase storage
  */
 export async function DELETE(request, { params }) {
   try {
-    const { id } = params;
-    
-    if (!id || isNaN(parseInt(id))) {
-      return NextResponse.json({ 
-        error: 'Invalid property ID' 
-      }, { status: 400 });
-    }
+    const { id } = await params
     
     // Verify the user's JWT token (admin only)
-    const { accessToken } = getAuthTokens(request);
+    const { accessToken } = await getAuthTokens(request)
     
     if (!accessToken) {
       return NextResponse.json({ 
         error: 'Unauthorized' 
-      }, { status: 401 });
+      }, { status: 401 })
     }
     
-    const payload = await verifyToken(accessToken);
+    const payload = await verifyToken(accessToken)
     
     if (!payload || !payload.admin_id) {
       return NextResponse.json({ 
         error: 'Unauthorized' 
-      }, { status: 401 });
+      }, { status: 401 })
     }
     
-    // Get existing property to verify ownership and location_id
-    const existingProperty = await propertiesService.get_by_id(id);
+    // Get the property data including images before deleting
+    const { data: property, error: propertyError } = await supabase
+      .from('properties')
+      .select('location_id, main_image, side_image1, side_image2')
+      .eq('id', id)
+      .single()
     
-    if (!existingProperty) {
-      return NextResponse.json({ 
-        error: 'Property not found' 
-      }, { status: 404 });
+    if (propertyError) {
+      if (propertyError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Property not found' }, { status: 404 })
+      }
+      throw new Error(`Error fetching property: ${propertyError.message}`)
     }
     
-    // Optional: Verify that the admin is the host of this property
-    if (existingProperty.host_id !== payload.admin_id) {
-      return NextResponse.json({ 
-        error: 'You do not have permission to delete this property' 
-      }, { status: 403 });
-    }
-    
-    // Get images to delete from storage later
-    const { data: propertyImages } = await supabase
-      .from('PropertyImages')
+    // Get extra images
+    const { data: extraImages, error: imagesError } = await supabase
+      .from('propertyimages')
       .select('image_url')
-      .eq('property_id', id);
+      .eq('property_id', id)
     
-    const imagesToDelete = [];
-    
-    if (existingProperty.main_image) {
-      imagesToDelete.push(existingProperty.main_image);
+    if (imagesError) {
+      throw new Error(`Error fetching property images: ${imagesError.message}`)
     }
     
-    if (existingProperty.side_image1) {
-      imagesToDelete.push(existingProperty.side_image1);
+    // Delete all images from storage
+    if (property.main_image) {
+      await deleteImageFromStorage(property.main_image)
     }
     
-    if (existingProperty.side_image2) {
-      imagesToDelete.push(existingProperty.side_image2);
+    if (property.side_image1) {
+      await deleteImageFromStorage(property.side_image1)
     }
     
-    if (propertyImages && propertyImages.length > 0) {
-      propertyImages.forEach(img => {
-        if (img.image_url) {
-          imagesToDelete.push(img.image_url);
-        }
-      });
+    if (property.side_image2) {
+      await deleteImageFromStorage(property.side_image2)
     }
     
-    // Delete the property (this will cascade delete property_amenities and property_images)
-    await propertiesService.delete(id);
+    for (const img of extraImages) {
+      await deleteImageFromStorage(img.image_url)
+    }
+    
+    // Delete related propertyamenities (junction table)
+    const { error: amenitiesError } = await supabase
+      .from('propertyamenities')
+      .delete()
+      .eq('property_id', id)
+    
+    if (amenitiesError) {
+      throw new Error(`Error deleting property amenities: ${amenitiesError.message}`)
+    }
+    
+    // Delete related propertyimages
+    const { error: deleteImagesError } = await supabase
+      .from('propertyimages')
+      .delete()
+      .eq('property_id', id)
+    
+    if (deleteImagesError) {
+      throw new Error(`Error deleting property images: ${deleteImagesError.message}`)
+    }
+    
+    // Delete the property
+    const { error: deletePropertyError } = await supabase
+      .from('properties')
+      .delete()
+      .eq('id', id)
+    
+    if (deletePropertyError) {
+      throw new Error(`Error deleting property: ${deletePropertyError.message}`)
+    }
     
     // Delete the location
-    await locationsService.delete(existingProperty.location_id);
+    const { error: locationError } = await supabase
+      .from('locations')
+      .delete()
+      .eq('id', property.location_id)
     
-    // Delete images from storage bucket if needed
-    if (imagesToDelete.length > 0) {
-      // Extract filenames from URLs
-      const fileNames = imagesToDelete.map(url => {
-        const parts = url.split('/');
-        return parts[parts.length - 1];
-      });
-      
-      // Create a storage service instance
-      const storageService = new SupabaseService('property-images');
-      
-      try {
-        await storageService.delete_multiple_images('property-images', fileNames);
-      } catch (storageError) {
-        console.error('Error deleting images from storage:', storageError);
-        // Continue with the response even if image deletion fails
-      }
+    if (locationError) {
+      throw new Error(`Error deleting location: ${locationError.message}`)
     }
     
     return NextResponse.json({
       success: true,
       message: 'Property deleted successfully'
-    });
+    })
   } catch (error) {
-    console.error('Delete property error:', error);
+    console.error('Delete listing error:', error)
     return NextResponse.json({ 
-      error: 'Failed to delete property' 
-    }, { status: 500 });
+      error: 'Failed to delete listing' 
+    }, { status: 500 })
   }
 }
-
-// import { NextResponse } from 'next/server';
-
-
-// // GET a single listing by ID
-// export async function GET(request, { params }) {
-
-// }
-
-// // PUT to update a listing (admin only)
-// export async function PUT(request, { params }) {
-
-// }
-
-// // DELETE a listing (admin only)
-// export async function DELETE(request, { params }) {
-
-// }
