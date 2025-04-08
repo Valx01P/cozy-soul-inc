@@ -55,15 +55,6 @@ export default function AdminNav() {
                 <PenBoxIcon size={18} className="mr-1" />
                 New Listing
               </Link>
-
-
-              <Link
-                href="/admin"
-                className="border-transparent text-gray-500 hover:border-[var(--primary-red)] hover:text-[var(--primary-red)] inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-              >
-                <List size={18} className="mr-1" />
-                View Listings
-              </Link>
               
             </div>
           </div>
@@ -113,40 +104,6 @@ export default function AdminNav() {
                 Dashboard
               </div>
             </Link>
-            
-            <Link
-              href="/admin/users"
-              className="text-gray-700 hover:bg-gray-50 hover:text-[var(--primary-red)] block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium"
-              onClick={toggleMenu}
-            >
-              <div className="flex items-center">
-                <Users size={18} className="mr-2" />
-                Users
-              </div>
-            </Link>
-            
-            <Link
-              href="/admin/listings"
-              className="text-gray-700 hover:bg-gray-50 hover:text-[var(--primary-red)] block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium"
-              onClick={toggleMenu}
-            >
-              <div className="flex items-center">
-                <List size={18} className="mr-2" />
-                Listings
-              </div>
-            </Link>
-            
-            <Link
-              href="/admin/settings"
-              className="text-gray-700 hover:bg-gray-50 hover:text-[var(--primary-red)] block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium"
-              onClick={toggleMenu}
-            >
-              <div className="flex items-center">
-                <Settings size={18} className="mr-2" />
-                Settings
-              </div>
-            </Link>
-            
             <button
               onClick={handleLogout}
               className="w-full text-left text-gray-700 hover:bg-gray-50 hover:text-[var(--primary-red)] block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium"

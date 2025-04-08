@@ -3,28 +3,19 @@ import { persist } from 'zustand/middleware'
 
 // Create the auth store with persistence
 const useAuthStore = create(
-  // The persist middleware wraps our store to save state to localStorage
   persist(
-    // The store creator function receives utilities to manage state
-    // set: Function to update the store state
-    // get: Function to retrieve current state values
     (set, get) => ({
-      // Initial state values
-      user: "null",                // Stores the authenticated user's data
-      token: "null",               // Authentication token for API requests
-      isAuthenticated: true,    // Flag indicating auth status
-      isLoading: false,          // Tracks async operation status
-      error: null,               // Holds any auth-related error messages
+      // Initial state
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
       
-      // Action: Login user with credentials
-      // Actions are just functions that can update state using set/get
+      // Login action
       login: async (email, password) => {
-        // Update loading state before API call
-        // The set function merges the provided object with current state
         set({ isLoading: true, error: null })
         
         try {
-          // Make API request for authentication
           const response = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -33,59 +24,18 @@ const useAuthStore = create(
           
           const data = await response.json()
           
-          // Handle API errors
-          if (!response.ok) throw new Error(data.message || 'Login failed')
+          if (!response.ok) {
+            throw new Error(data.message || 'Login failed')
+          }
           
-          // Update multiple state values at once
-          // set merges this object with existing state
+          // Update state with user data, tokens are stored in HTTP-only cookies
           set({
-            user: data.user,
-            token: data.token,
-            isAuthenticated: true,
-            isLoading: false
-          })
-          
-          return data
-        } catch (error) {
-          // Update error state on failure
-          set({ error: error.message, isLoading: false })
-          throw error // Re-throw for component-level handling
-        }
-      },
-      
-      // Action: Log out the current user
-      logout: () => {
-        // Reset auth state to initial values
-        // Any component subscribing to these values will re-render
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          error: null
-        })
-      },
-      
-      // Action: Register a new user
-      register: async (userData) => {
-        // Similar pattern to login - set loading state first
-        set({ isLoading: true, error: null })
-        
-        try {
-          // API call to register user
-          const response = await fetch('/api/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(userData)
-          })
-          
-          const data = await response.json()
-          
-          if (!response.ok) throw new Error(data.message || 'Registration failed')
-          
-          // Update state after successful registration
-          set({
-            user: data.user,
-            token: data.token,
+            user: {
+              first_name: data.first_name,
+              last_name: data.last_name,
+              email: data.email,
+              username: data.username
+            },
             isAuthenticated: true,
             isLoading: false
           })
@@ -97,23 +47,124 @@ const useAuthStore = create(
         }
       },
       
-      // Action: Update the user profile
-      // Demonstrates using get() to access current state values
-      updateUser: (userData) => {
-        set({
-          // get() returns the current state, used to merge with new data
-          // This preserves fields not included in userData
-          user: { ...get().user, ...userData }
-        })
+      // Logout action
+      logout: async () => {
+        set({ isLoading: true })
+        
+        try {
+          // Call logout API to clear cookies
+          const response = await fetch('/api/auth/logout', {
+            method: 'POST'
+          })
+          
+          if (!response.ok) {
+            const data = await response.json()
+            throw new Error(data.message || 'Logout failed')
+          }
+          
+          // Reset auth state
+          set({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: null
+          })
+        } catch (error) {
+          set({ error: error.message, isLoading: false })
+          throw error
+        }
       },
       
-      // Action: Clear error messages
+      // Check current auth status
+      checkAuth: async () => {
+        if (get().isLoading) return
+        
+        set({ isLoading: true })
+        
+        try {
+          const response = await fetch('/api/auth/me', {
+            method: 'GET',
+            credentials: 'include' // Important for cookies
+          })
+          
+          if (!response.ok) {
+            // If unauthorized, clear auth state
+            if (response.status === 401) {
+              set({
+                user: null,
+                isAuthenticated: false,
+                isLoading: false,
+                error: null
+              })
+              return
+            }
+            
+            const data = await response.json()
+            throw new Error(data.message || 'Authentication check failed')
+          }
+          
+          const data = await response.json()
+          
+          set({
+            user: {
+              first_name: data.first_name,
+              last_name: data.last_name,
+              email: data.email,
+              username: data.username
+            },
+            isAuthenticated: true,
+            isLoading: false
+          })
+        } catch (error) {
+          set({ 
+            error: error.message, 
+            isLoading: false,
+            isAuthenticated: false,
+            user: null
+          })
+        }
+      },
+      
+      // Attempt to refresh the token
+      refreshToken: async () => {
+        try {
+          const response = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            credentials: 'include' // Important for cookies
+          })
+          
+          if (!response.ok) {
+            // If refresh fails, log the user out
+            set({
+              user: null,
+              isAuthenticated: false,
+              error: null
+            })
+            return false
+          }
+          
+          return true
+        } catch (error) {
+          set({
+            user: null,
+            isAuthenticated: false,
+            error: null
+          })
+          return false
+        }
+      },
+      
+      // Clear any error messages
       clearError: () => set({ error: null })
     }),
     {
-      // persist middleware configuration
-      name: 'auth-storage',      // Key used for localStorage
-      getStorage: () => localStorage, // Storage mechanism to use
+      name: 'auth-storage',
+      getStorage: () => localStorage,
+      partialize: (state) => ({
+        // Only persist user data, not loading states or errors
+        user: state.user,
+        isAuthenticated: state.isAuthenticated
+      })
     }
   )
 )
