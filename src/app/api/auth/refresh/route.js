@@ -35,9 +35,10 @@ export async function POST() {
       username: payload.username
     }
     
-    const newAccessToken = generateAccessToken(newPayload)
-    const newRefreshToken = generateRefreshToken(newPayload)
-    
+    // Correct version with awaits
+    const newAccessToken = await generateAccessToken(newPayload)
+    const newRefreshToken = await generateRefreshToken(newPayload)
+
     // Set HTTP-only cookies
     await setAuthCookies(newAccessToken, newRefreshToken)
 

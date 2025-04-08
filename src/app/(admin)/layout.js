@@ -22,9 +22,19 @@ export default function AdminLayout({ children }) {
   }
 
   return (
-    <>
-        <AdminNavbar/>
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      <AdminNavbar />
+      <main className="flex-1">
         {children}
-    </>
+      </main>
+      
+      {/* Simple footer */}
+      <footer className="bg-white shadow-inner py-4 mt-auto">
+        <div className="container mx-auto px-4 text-center text-gray-500 text-sm">
+          <p>© {new Date().getFullYear()} Admin Portal. All rights reserved.</p>
+        </div>
+      </footer>
+    </div>
+
   )
 }

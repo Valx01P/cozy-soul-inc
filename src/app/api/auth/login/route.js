@@ -44,8 +44,8 @@ export async function POST(request) {
       username: admin.username
     }
     
-    const accessToken = generateAccessToken(payload)
-    const refreshToken = generateRefreshToken(payload)
+    const accessToken = await generateAccessToken(payload)
+    const refreshToken = await generateRefreshToken(payload)
 
     // Set HTTP-only cookies
     await setAuthCookies(accessToken, refreshToken)
