@@ -63,12 +63,12 @@ export default function Footer() {
               <li>
                 <Link href="/contact" className="text-gray-400 hover:text-white transition-colors">Contact</Link>
               </li>
-              <li>
+              {/* <li>
                 <Link href="/careers" className="text-gray-400 hover:text-white transition-colors">Careers</Link>
               </li>
               <li>
                 <Link href="/blog" className="text-gray-400 hover:text-white transition-colors">Blog</Link>
-              </li>
+              </li> */}
             </ul>
           </div>
 
@@ -76,12 +76,12 @@ export default function Footer() {
           <div className="col-span-1">
             <h3 className="text-lg font-semibold mb-6 text-[var(--primary-red)]">Support</h3>
             <ul className="space-y-4">
-              <li>
+              {/* <li>
                 <Link href="/help" className="text-gray-400 hover:text-white transition-colors">Help Center</Link>
-              </li>
-              <li>
+              </li> */}
+              {/* <li>
                 <Link href="/faqs" className="text-gray-400 hover:text-white transition-colors">FAQs</Link>
-              </li>
+              </li> */}
               <li>
                 <Link href="/terms" className="text-gray-400 hover:text-white transition-colors">Terms of Service</Link>
               </li>
@@ -91,8 +91,24 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Newsletter section */}
+          {/* Owner section */}
           <div className="col-span-1">
+            <h3 className="text-lg font-semibold mb-6 text-[var(--primary-red)]">Management</h3>
+            <ul className="space-y-4">
+              {/* <li>
+                <Link href="/help" className="text-gray-400 hover:text-white transition-colors">Help Center</Link>
+              </li> */}
+              {/* <li>
+                <Link href="/faqs" className="text-gray-400 hover:text-white transition-colors">FAQs</Link>
+              </li> */}
+              <li>
+                <Link href="/admin" className="text-gray-400 hover:text-white transition-colors">Admin Portal</Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Newsletter section */}
+          {/* <div className="col-span-1">
             <h3 className="text-lg font-semibold mb-6 text-[var(--primary-red)]">Newsletter</h3>
             <p className="text-gray-400 mb-4">Stay updated with our latest properties and offers</p>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -113,7 +129,7 @@ export default function Footer() {
                 Subscribe
               </button>
             </form>
-          </div>
+          </div> */}
         </div>
 
         {/* Contact information */}

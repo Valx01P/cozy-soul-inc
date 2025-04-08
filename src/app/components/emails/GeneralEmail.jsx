@@ -18,88 +18,93 @@ export default function GeneralEmail({
       <Head />
       <Body style={{
         backgroundColor: lightGray,
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
         margin: '0',
         padding: '0',
       }}>
         <Container style={{
           backgroundColor: white,
           margin: '40px auto',
-          padding: '20px',
+          padding: '0',
           maxWidth: '600px',
-          borderRadius: '8px',
-          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+          borderRadius: '16px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+          overflow: 'hidden',
         }}>
-          {/* Header with logo and brand colors */}
+          {/* Header with brand colors */}
           <Section style={{ 
             backgroundColor: primaryRed, 
-            padding: '20px',
-            borderRadius: '6px 6px 0 0',
-            marginBottom: '20px',
+            padding: '32px 24px',
+            textAlign: 'center',
           }}>
             <Text style={{ 
               color: white, 
-              fontSize: '24px', 
-              fontWeight: 'bold',
-              textAlign: 'center',
-              margin: '0'
+              fontSize: '28px', 
+              fontWeight: '800',
+              letterSpacing: '-0.5px',
+              margin: '0',
+              lineHeight: '1.2',
             }}>
               New Website Inquiry
             </Text>
           </Section>
 
           {/* Inquiry Details Section */}
-          <Section style={{ padding: '0 20px' }}>
+          <Section style={{ padding: '32px 24px 16px' }}>
             <Text style={{ 
-              fontSize: '18px', 
-              fontWeight: 'bold',
+              fontSize: '22px', 
+              fontWeight: '700',
               color: darkGray,
               borderBottom: `2px solid ${primaryRed}`,
-              paddingBottom: '8px'
+              paddingBottom: '12px',
+              margin: '0 0 24px 0',
+              letterSpacing: '-0.3px',
             }}>
               Inquiry Details
             </Text>
             
-            <Text style={{ margin: '8px 0', color: darkGray }}>
-              <span style={{ fontWeight: 'bold' }}>From:</span> {name}
+            <Text style={{ margin: '12px 0', color: darkGray, fontSize: '16px', lineHeight: '1.6' }}>
+              <span style={{ fontWeight: '600' }}>From:</span> {name}
             </Text>
-            <Text style={{ margin: '8px 0', color: darkGray }}>
-              <span style={{ fontWeight: 'bold' }}>Email:</span> {email}
+            <Text style={{ margin: '12px 0', color: darkGray, fontSize: '16px', lineHeight: '1.6' }}>
+              <span style={{ fontWeight: '600' }}>Email:</span> {email}
             </Text>
-            <Text style={{ margin: '8px 0', color: darkGray }}>
-              <span style={{ fontWeight: 'bold' }}>Phone:</span> {phone || 'Not provided'}
+            <Text style={{ margin: '12px 0', color: darkGray, fontSize: '16px', lineHeight: '1.6' }}>
+              <span style={{ fontWeight: '600' }}>Phone:</span> {phone || 'Not provided'}
             </Text>
           </Section>
 
           <Hr style={{ 
-            borderColor: lightGray, 
-            borderWidth: '1px', 
-            margin: '20px 0' 
+            borderColor: '#EEEEEE', 
+            borderWidth: '1px',
+            margin: '0',
           }} />
 
           {/* Message Section */}
-          <Section style={{ padding: '0 20px' }}>
+          <Section style={{ padding: '32px 24px 16px' }}>
             <Text style={{ 
-              fontSize: '18px', 
-              fontWeight: 'bold',
+              fontSize: '22px', 
+              fontWeight: '700',
               color: darkGray,
               borderBottom: `2px solid ${primaryRed}`,
-              paddingBottom: '8px',
-              marginBottom: '15px'
+              paddingBottom: '12px',
+              margin: '0 0 24px 0',
+              letterSpacing: '-0.3px',
             }}>
               Message
             </Text>
 
             <Section style={{ 
               backgroundColor: lightGray, 
-              padding: '20px', 
-              borderRadius: '6px',
-              margin: '15px 0' 
+              padding: '24px', 
+              borderRadius: '12px',
+              margin: '8px 0 24px' 
             }}>
               <Text style={{ 
                 color: darkGray, 
                 margin: '0',
-                lineHeight: '1.5' 
+                lineHeight: '1.6',
+                fontSize: '16px',
               }}>
                 {message}
               </Text>
@@ -109,22 +114,22 @@ export default function GeneralEmail({
           {/* Footer */}
           <Section style={{ 
             backgroundColor: lightGray, 
-            padding: '15px', 
-            borderRadius: '0 0 6px 6px',
-            marginTop: '20px',
+            padding: '24px', 
             textAlign: 'center'
           }}>
             <Text style={{ 
               color: darkGray, 
               fontSize: '14px',
-              margin: '0'
+              margin: '0 0 4px 0',
+              lineHeight: '1.5',
             }}>
               This is an automated message from your rental website.
             </Text>
             <Text style={{ 
               color: darkGray, 
               fontSize: '14px',
-              margin: '5px 0 0 0'
+              margin: '4px 0 0 0',
+              lineHeight: '1.5',
             }}>
               © {new Date().getFullYear()} Your Rental Company. All rights reserved.
             </Text>

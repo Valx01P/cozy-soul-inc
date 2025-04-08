@@ -1,3 +1,4 @@
+'use client'
 import Image from "next/image"
 import Link from "next/link"
 import { Home, Users, Bed, MapPin } from "lucide-react"
@@ -32,12 +33,14 @@ export default function ListingCard({ property }) {
     if (property.amenities) {
       // Loop through all amenity categories
       Object.entries(property.amenities).forEach(([category, amenities]) => {
-        // Loop through amenities in this category
-        Object.entries(amenities).forEach(([name, available]) => {
-          if (available === true) {
-            amenityList.push(name)
-          }
-        })
+        if (Array.isArray(amenities)) {
+          // If amenities is an array of objects with name property
+          amenities.forEach(amenity => {
+            if (amenity && amenity.name) {
+              amenityList.push(amenity.name)
+            }
+          })
+        }
       })
     }
     
@@ -45,8 +48,8 @@ export default function ListingCard({ property }) {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 group h-full">
-      <Link href={`/property/${property.id}`} className="block h-full">
+    <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-2xl transition-shadow duration-300 group h-full">
+      <Link href={`/listings/${property.id}`} className="block h-full">
         <div className="flex flex-col h-full">
           {/* Images Container */}
           <div className="relative flex h-56 md:h-64">
@@ -55,7 +58,7 @@ export default function ListingCard({ property }) {
               <Image 
                 src={property.main_image} 
                 alt={property.title}
-                className="object-cover h-full w-full group-hover:scale-105 transition-transform duration-500" 
+                className="object-cover h-full w-full group-hover:scale-101 transition-transform duration-200" 
                 width={600} 
                 height={400}
               />
@@ -67,7 +70,7 @@ export default function ListingCard({ property }) {
                 <Image 
                   src={property.side_image1 || property.extra_images?.[0] || property.main_image} 
                   alt="Property view" 
-                  className="object-cover h-full w-full group-hover:scale-105 transition-transform duration-500"
+                  className="object-cover h-full w-full group-hover:scale-101 transition-transform duration-200"
                   width={300} 
                   height={200}
                 />
@@ -76,7 +79,7 @@ export default function ListingCard({ property }) {
                 <Image 
                   src={property.side_image2 || property.extra_images?.[1] || property.main_image} 
                   alt="Property view" 
-                  className="object-cover h-full w-full group-hover:scale-105 transition-transform duration-500"
+                  className="object-cover h-full w-full group-hover:scale-101 transition-transform duration-200"
                   width={300} 
                   height={200}
                 />
@@ -144,7 +147,7 @@ export default function ListingCard({ property }) {
             <div className="flex justify-between items-center mt-4">
               <div>
                 <span className="text-lg font-semibold text-gray-900">{formatPrice()}</span>
-                <span className="text-gray-600 text-sm"> / {property.price_description}</span>
+                <span className="text-gray-600 text-sm"> / {property.price_description || 'night'}</span>
               </div>
               <div className="bg-[var(--primary-red)] hover:bg-[var(--primary-red-hover)] text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
                 View Property
