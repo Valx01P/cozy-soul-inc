@@ -55,7 +55,7 @@ export default function Listings() {
     async function fetchProperties() {
       try {
         setIsLoading(true)
-        const response = await fetch("http://localhost:3000/api/listings")
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/listings`)
         
         if (!response.ok) {
           throw new Error(`Failed to fetch properties: ${response.status}`)

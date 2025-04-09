@@ -11,7 +11,7 @@ export default function ListingsPage() {
     async function fetchProperties() {
       setLoading(true)
       try {
-        const response = await fetch('http://localhost:3000/api/listings')
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/listings`)
         console.log(response)
         const data = await response.json()
         console.log(data)
