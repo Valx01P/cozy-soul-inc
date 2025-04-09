@@ -17,6 +17,10 @@ export function BasicInfoFormStep() {
     side_image1,
     side_image2,
     extra_images,
+    main_image_url,
+    side_image1_url,
+    side_image2_url,
+    extra_image_urls,
     imagePreviews,
     updateBasicInfo,
     updateImagePreview
@@ -52,6 +56,29 @@ export function BasicInfoFormStep() {
   const extraImagesRef = useRef(null)
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
+
+  // Set preview from URLs on initial load (for edit mode)
+  useEffect(() => {
+    if (main_image_url && !imagePreviews.main_image) {
+      updateImagePreview('main_image', main_image_url);
+    }
+    if (side_image1_url && !imagePreviews.side_image1) {
+      updateImagePreview('side_image1', side_image1_url);
+    }
+    if (side_image2_url && !imagePreviews.side_image2) {
+      updateImagePreview('side_image2', side_image2_url);
+    }
+    if (extra_image_urls?.length > 0 && (!imagePreviews.extra_images || imagePreviews.extra_images.length === 0)) {
+      updateImagePreview('extra_images', extra_image_urls);
+    }
+  }, [
+    main_image_url, 
+    side_image1_url, 
+    side_image2_url, 
+    extra_image_urls, 
+    imagePreviews,
+    updateImagePreview
+  ]);
 
   // Cleanup camera resources when component unmounts
   useEffect(() => {
@@ -125,25 +152,38 @@ export function BasicInfoFormStep() {
       // Remove specific extra image
       const newExtraImages = [...extra_images]
       const newExtraPreviews = [...imagePreviews.extra_images]
+      const newExtraUrls = [...extra_image_urls]
 
       // Release object URL to avoid memory leaks
-      if (newExtraPreviews[index]) {
+      if (newExtraPreviews[index] && !newExtraPreviews[index].startsWith('http')) {
         URL.revokeObjectURL(newExtraPreviews[index])
       }
 
       newExtraImages.splice(index, 1)
       newExtraPreviews.splice(index, 1)
+      
+      // Also remove from URLs if it exists there
+      if (index < newExtraUrls.length) {
+        newExtraUrls.splice(index, 1)
+      }
 
-      updateBasicInfo({ extra_images: newExtraImages })
+      updateBasicInfo({ 
+        extra_images: newExtraImages,
+        extra_image_urls: newExtraUrls
+      })
       updateImagePreview('extra_images', newExtraPreviews)
     } else {
       // Remove main or side image
       // Release object URL to avoid memory leaks
-      if (imagePreviews[imageType]) {
+      if (imagePreviews[imageType] && !imagePreviews[imageType].startsWith('http')) {
         URL.revokeObjectURL(imagePreviews[imageType])
       }
 
-      updateBasicInfo({ [imageType]: null })
+      // Clear both the file and the URL
+      updateBasicInfo({ 
+        [imageType]: null,
+        [`${imageType}_url`]: null
+      })
       updateImagePreview(imageType, null)
     }
   }
@@ -198,7 +238,10 @@ export function BasicInfoFormStep() {
   }
 
   // Take photo from camera
-  const takePhoto = () => {
+  const takePhoto = (e) => {
+    // Prevent any form submission
+    e?.preventDefault?.()
+    
     if (!videoRef.current || !canvasRef.current) return
     
     const video = videoRef.current
@@ -497,7 +540,7 @@ export function BasicInfoFormStep() {
                         Browse
                       </button>
                       <button
-                        type="button"
+                        type="button" 
                         onClick={() => openCamera('side_image1')}
                         className="flex items-center gap-1 px-2 py-1 text-xs bg-[var(--primary-red)] text-white rounded-md shadow-sm font-medium hover:bg-[var(--primary-red-hover)]"
                       >
@@ -638,12 +681,17 @@ export function BasicInfoFormStep() {
       
       {/* Camera Modal */}
       {isCameraOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Take a Photo</h3>
               <button
-                onClick={closeCamera}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  closeCamera()
+                }}
                 className="text-gray-500 hover:text-gray-700"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -664,7 +712,12 @@ export function BasicInfoFormStep() {
             
             <div className="flex justify-center">
               <button
-                onClick={takePhoto}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  takePhoto()
+                }}
                 className="px-6 py-3 bg-[var(--primary-red)] text-white rounded-lg shadow-sm font-medium hover:bg-[var(--primary-red-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-red)] focus:ring-offset-2 transition duration-200"
               >
                 Take Photo

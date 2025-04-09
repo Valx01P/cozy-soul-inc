@@ -9,6 +9,7 @@ export function DetailsFormStep() {
     number_of_guests,
     number_of_bedrooms,
     number_of_beds,
+    number_of_bathrooms,
     additional_info,
     amenities,
     updateDetails,
@@ -19,16 +20,19 @@ export function DetailsFormStep() {
   const [amenitiesData, setAmenitiesData] = useState({})
   const [isLoading, setIsLoading] = useState(true)
   
-  // Fetch amenities data on component mount
+  // Fetch amenities data from API on component mount
   useEffect(() => {
     const fetchAmenities = async () => {
       try {
-        // Fetch from the correct JSON file
-        const response = await fetch('/json/icons.json')
+        // Fetch from the API instead of a JSON file
+        const response = await fetch('/api/amenities')
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`)
+        }
         const data = await response.json()
-        setAmenitiesData(data.amenities)
+        setAmenitiesData(data) // API returns category-based structure directly
         setIsLoading(false)
-        console.log("Loaded amenities data:", data.amenities)
+        console.log("Loaded amenities data:", data)
       } catch (error) {
         console.error("Error fetching amenities:", error)
         setIsLoading(false)
@@ -41,7 +45,7 @@ export function DetailsFormStep() {
   // Log current amenities in store when component mounts
   useEffect(() => {
     console.log("Current amenities in store on mount:", amenities)
-  }, [])
+  }, [amenities])
 
   // Handle basic form input changes
   const handleInputChange = (e) => {
@@ -80,10 +84,7 @@ export function DetailsFormStep() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin w-8 h-8 border-4 border-[var(--primary-red)] border-t-transparent rounded-full mb-4"></div>
-          <p>Loading amenities...</p>
-        </div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary-red)]"></div>
       </div>
     )
   }
@@ -145,6 +146,23 @@ export function DetailsFormStep() {
               required
             />
           </div>
+        </div>
+        
+        <div>
+          <label htmlFor="number_of_bathrooms" className="block text-sm font-medium text-gray-700 mb-1">
+            Bathrooms
+          </label>
+          <input
+            type="number"
+            id="number_of_bathrooms"
+            name="number_of_bathrooms"
+            min="1"
+            max="20"
+            value={number_of_bathrooms}
+            onChange={handleInputChange}
+            className="block w-full rounded-lg border border-gray-200 px-4 py-3 focus:border-[var(--primary-red)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-red)]"
+            required
+          />
         </div>
         
         <div>

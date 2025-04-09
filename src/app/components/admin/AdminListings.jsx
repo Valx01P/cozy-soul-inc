@@ -5,6 +5,9 @@ import { Edit, Trash2, Plus, Eye, ArrowUp, ArrowDown, AlertCircle, CheckCircle, 
 import { Search } from '../svg/Icons';
 import Link from "next/link";
 
+// Default placeholder image
+const PLACEHOLDER_IMAGE = "https://placehold.co/400x320/e2e8f0/a0aec0?text=No+Image";
+
 export default function AdminListings() {
   const [properties, setProperties] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,7 +29,17 @@ export default function AdminListings() {
         }
         
         const data = await response.json();
-        setProperties(data.properties || []);
+        
+        // Ensure properties exists and handle image URLs
+        const propertiesWithValidImages = (data.properties || []).map(property => ({
+          ...property,
+          main_image: property.main_image || PLACEHOLDER_IMAGE,
+          side_image1: property.side_image1 || null,
+          side_image2: property.side_image2 || null,
+          extra_images: Array.isArray(property.extra_images) ? property.extra_images.filter(url => !!url) : []
+        }));
+        
+        setProperties(propertiesWithValidImages);
       } catch (error) {
         console.error("Error fetching properties:", error);
         showToast('Failed to load listings. Please try again later.', 'error');
@@ -91,7 +104,7 @@ export default function AdminListings() {
   
   // Filter properties based on search query
   const filteredProperties = properties.filter(property => 
-    property.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    property.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     property.location?.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     property.location?.address?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -271,13 +284,19 @@ export default function AdminListings() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="h-12 w-16 relative rounded-md overflow-hidden">
-                              <Image 
-                                src={property.main_image} 
-                                alt={property.title}
-                                className="object-cover"
-                                fill
-                                sizes="64px"
-                              />
+                              {property.main_image ? (
+                                <Image 
+                                  src={property.main_image}
+                                  alt={property.title || "Property image"}
+                                  className="object-cover"
+                                  fill
+                                  sizes="64px"
+                                />
+                              ) : (
+                                <div className="h-full w-full bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+                                  No Image
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -330,13 +349,19 @@ export default function AdminListings() {
                     <div key={property.id} className="border-b border-gray-200 p-4">
                       <div className="flex items-start space-x-4">
                         <div className="h-20 w-20 relative rounded-md overflow-hidden flex-shrink-0">
-                          <Image 
-                            src={property.main_image} 
-                            alt={property.title}
-                            className="object-cover"
-                            fill
-                            sizes="80px"
-                          />
+                          {property.main_image ? (
+                            <Image 
+                              src={property.main_image}
+                              alt={property.title || "Property image"}
+                              className="object-cover"
+                              fill
+                              sizes="80px"
+                            />
+                          ) : (
+                            <div className="h-full w-full bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+                              No Image
+                            </div>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{property.title}</p>

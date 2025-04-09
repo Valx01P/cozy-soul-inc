@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { ChevronLeft, Home, Users, Bed, Bath, MapPin, MessageCircle, Camera, ChevronRight } from "lucide-react"
+import { ChevronLeft, Home, Users, Bed, Bath, MapPin, MessageCircle, Camera, ChevronRight, ImageIcon } from "lucide-react"
 import { use } from "react"
 
 export default function PropertyDetail({ params }) {
@@ -23,6 +23,9 @@ export default function PropertyDetail({ params }) {
   // Array of all images for gallery view
   const [allImages, setAllImages] = useState([])
 
+  // Default placeholder image
+  const placeholderImage = "https://placehold.co/600x400/e2e8f0/64748b?text=No+Image"
+
   useEffect(() => {
     async function fetchProperty() {
       try {
@@ -35,17 +38,25 @@ export default function PropertyDetail({ params }) {
         
         const data = await response.json()
         setProperty(data)
-        setActiveImage(data.main_image)
         
-        // Collect all available images
-        const images = [
+        // Set active image to the first available image or placeholder
+        const mainImage = data.main_image || placeholderImage
+        setActiveImage(mainImage)
+        
+        // Collect all available images, filtering out any null/undefined values
+        const validImages = [
           data.main_image,
           data.side_image1,
           data.side_image2,
           ...(data.extra_images || [])
         ].filter(Boolean) // Filter out undefined/null values
         
-        setAllImages(images)
+        // If no images at all, add at least one placeholder
+        if (validImages.length === 0) {
+          validImages.push(placeholderImage)
+        }
+        
+        setAllImages(validImages)
       } catch (err) {
         console.error("Error fetching property:", err)
         setError("Failed to load property details")
@@ -57,7 +68,7 @@ export default function PropertyDetail({ params }) {
     if (id) {
       fetchProperty()
     }
-  }, [id])
+  }, [id, placeholderImage])
 
   // Initialize Google Maps when property data is available
   useEffect(() => {
@@ -149,6 +160,19 @@ export default function PropertyDetail({ params }) {
     }
   }
   
+  // Helper function to render image with fallback
+  const renderImage = (src, alt, className = "", priority = false) => {
+    return (
+      <Image
+        src={src || placeholderImage}
+        alt={alt}
+        fill
+        className={`object-cover ${className}`}
+        priority={priority}
+      />
+    )
+  }
+  
   // Full screen gallery component
   const PhotoGallery = () => {
     const [currentIndex, setCurrentIndex] = useState(allImages.indexOf(activeImage) || 0)
@@ -161,6 +185,9 @@ export default function PropertyDetail({ params }) {
       setCurrentIndex((prev) => (prev - 1 + allImages.length) % allImages.length)
     }
     
+    // Don't show gallery controls if there's only one image
+    const showControls = allImages.length > 1
+    
     return (
       <div className="fixed inset-0 bg-black z-50 flex flex-col">
         <div className="p-4 flex justify-between items-center text-white">
@@ -172,20 +199,24 @@ export default function PropertyDetail({ params }) {
             <ChevronLeft size={24} className="mr-1" />
             Back
           </button>
-          <div className="text-sm">
-            {currentIndex + 1} / {allImages.length}
-          </div>
+          {showControls && (
+            <div className="text-sm">
+              {currentIndex + 1} / {allImages.length}
+            </div>
+          )}
         </div>
         
         <div className="flex-1 flex items-center justify-center relative">
-          <button 
-            type="button"
-            onClick={goToPrevious}
-            className="absolute left-4 z-10 bg-black/50 rounded-full p-2 text-white hover:bg-black/70"
-            aria-label="Previous image"
-          >
-            <ChevronLeft size={24} />
-          </button>
+          {showControls && (
+            <button 
+              type="button"
+              onClick={goToPrevious}
+              className="absolute left-4 z-10 bg-black/50 rounded-full p-2 text-white hover:bg-black/70"
+              aria-label="Previous image"
+            >
+              <ChevronLeft size={24} />
+            </button>
+          )}
           
           <div className="w-full h-full flex items-center justify-center p-4">
             <Image
@@ -197,39 +228,214 @@ export default function PropertyDetail({ params }) {
             />
           </div>
           
-          <button 
-            type="button"
-            onClick={goToNext}
-            className="absolute right-4 z-10 bg-black/50 rounded-full p-2 text-white hover:bg-black/70"
-            aria-label="Next image"
-          >
-            <ChevronRight size={24} />
-          </button>
+          {showControls && (
+            <button 
+              type="button"
+              onClick={goToNext}
+              className="absolute right-4 z-10 bg-black/50 rounded-full p-2 text-white hover:bg-black/70"
+              aria-label="Next image"
+            >
+              <ChevronRight size={24} />
+            </button>
+          )}
         </div>
         
-        <div className="p-4 overflow-x-auto">
-          <div className="flex space-x-2">
-            {allImages.map((img, idx) => (
-              <div 
-                key={idx}
-                className={`w-20 h-20 relative flex-shrink-0 cursor-pointer ${
-                  idx === currentIndex ? 'ring-2 ring-white' : ''
-                }`}
-                onClick={() => setCurrentIndex(idx)}
-              >
-                <Image
-                  src={img}
-                  alt={`Thumbnail ${idx + 1}`}
-                  fill
-                  className="object-cover rounded-md"
-                />
-              </div>
-            ))}
+        {showControls && (
+          <div className="p-4 overflow-x-auto">
+            <div className="flex space-x-2">
+              {allImages.map((img, idx) => (
+                <div 
+                  key={idx}
+                  className={`w-20 h-20 relative flex-shrink-0 cursor-pointer ${
+                    idx === currentIndex ? 'ring-2 ring-white' : ''
+                  }`}
+                  onClick={() => setCurrentIndex(idx)}
+                >
+                  <Image
+                    src={img}
+                    alt={`Thumbnail ${idx + 1}`}
+                    fill
+                    className="object-cover rounded-md"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     )
   }
+
+  // Function to determine which grid layout to use based on number of images
+  const getImageGrid = () => {
+    const imageCount = allImages.length;
+    
+    // Only show "View all photos" button if there are actually photos to view
+    const showViewAllButton = imageCount > 0;
+    
+    // Render placeholder if no images
+    if (imageCount === 0) {
+      return (
+        <div className="h-[60vh] flex items-center justify-center bg-gray-100 rounded-xl">
+          <div className="text-center">
+            <ImageIcon size={48} className="mx-auto text-gray-400 mb-4" />
+            <p className="text-gray-500">No images available</p>
+          </div>
+        </div>
+      );
+    }
+    
+    // Return appropriate grid based on image count
+    return (
+      <div className="relative">
+        {/* View all photos button */}
+        {showViewAllButton && (
+          <button 
+            type="button"
+            onClick={() => setShowAllPhotos(true)}
+            className="absolute top-4 right-4 z-10 bg-white rounded-full px-4 py-2 flex items-center text-sm font-medium shadow-md hover:bg-gray-100 transition-colors"
+          >
+            <Camera size={16} className="mr-2" />
+            View all photos
+          </button>
+        )}
+        
+        {/* Desktop Layout */}
+        <div className="hidden md:block">
+          {/* Single image layout */}
+          {imageCount === 1 && (
+            <div className="h-[60vh] relative rounded-xl overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+              {renderImage(allImages[0], property?.title || "Property image", "rounded-xl", true)}
+            </div>
+          )}
+          
+          {/* Two images layout */}
+          {imageCount === 2 && (
+            <div className="grid grid-cols-2 gap-4 h-[60vh]">
+              <div className="relative rounded-l-xl overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+                {renderImage(allImages[0], property?.title || "Property image", "rounded-l-xl", true)}
+              </div>
+              <div className="relative rounded-r-xl overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+                {renderImage(allImages[1], `${property?.title || "Property"} side view`, "rounded-r-xl")}
+              </div>
+            </div>
+          )}
+          
+          {/* Three images layout */}
+          {imageCount === 3 && (
+            <div className="grid grid-cols-2 gap-4 h-[60vh]">
+              <div className="relative rounded-l-xl overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+                {renderImage(allImages[0], property?.title || "Property image", "rounded-l-xl", true)}
+              </div>
+              <div className="grid grid-rows-2 gap-4">
+                <div className="relative rounded-tr-xl overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+                  {renderImage(allImages[1], `${property?.title || "Property"} side view 1`, "rounded-tr-xl")}
+                </div>
+                <div className="relative rounded-br-xl overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+                  {renderImage(allImages[2], `${property?.title || "Property"} side view 2`, "rounded-br-xl")}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Four images layout - NEW! */}
+          {imageCount === 4 && (
+            <div className="grid grid-cols-2 gap-4 h-[60vh]">
+              <div className="relative rounded-l-xl overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+                {renderImage(allImages[0], property?.title || "Property image", "rounded-l-xl", true)}
+              </div>
+              <div className="grid grid-rows-3 gap-4">
+                <div className="relative rounded-tr-xl overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+                  {renderImage(allImages[1], `${property?.title || "Property"} side view 1`, "rounded-tr-xl")}
+                </div>
+                <div className="relative overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+                  {renderImage(allImages[2], `${property?.title || "Property"} side view 2`)}
+                </div>
+                <div className="relative rounded-br-xl overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+                  {renderImage(allImages[3], `${property?.title || "Property"} side view 3`, "rounded-br-xl")}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Five or more images layout */}
+          {imageCount >= 5 && (
+            <div className="grid grid-cols-4 grid-rows-2 gap-4 h-[60vh]">
+              {/* Main large image (left column) */}
+              <div className="col-span-2 row-span-2 relative rounded-l-xl overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+                {renderImage(allImages[0], property?.title || "Property image", "rounded-l-xl", true)}
+              </div>
+              
+              {/* Top right images */}
+              <div className="relative overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+                {renderImage(allImages[1], `${property?.title || "Property"} side view 1`)}
+              </div>
+              
+              <div className="relative overflow-hidden cursor-pointer rounded-tr-xl" onClick={() => setShowAllPhotos(true)}>
+                {renderImage(allImages[2], `${property?.title || "Property"} side view 2`, "rounded-tr-xl")}
+              </div>
+              
+              {/* Bottom right images */}
+              <div className="relative overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+                {renderImage(allImages[3], `${property?.title || "Property"} extra view 1`)}
+              </div>
+              
+              <div className="relative overflow-hidden cursor-pointer rounded-br-xl" onClick={() => setShowAllPhotos(true)}>
+                <div className="relative w-full h-full">
+                  {renderImage(allImages[4], `${property?.title || "Property"} extra view 2`, "rounded-br-xl")}
+                  
+                  {/* Only show the overlay if there are more than 5 images */}
+                  {imageCount > 5 && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white font-medium rounded-br-xl cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+                      +{allImages.length - 5} more
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Mobile Layout - Also improved */}
+        <div className="md:hidden">
+          {/* Main image */}
+          <div className="relative w-full h-64 rounded-t-xl overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+            {renderImage(allImages[0], property?.title || "Property image", "rounded-t-xl", true)}
+          </div>
+          
+          {/* Horizontal scroll for small previews - only show if there are additional images */}
+          {imageCount > 1 && (
+            <div className="flex overflow-x-auto space-x-2 pb-2 mt-2">
+              {allImages.slice(1).map((img, idx) => (
+                <div 
+                  key={idx}
+                  className="relative w-28 h-28 flex-shrink-0 cursor-pointer"
+                  onClick={() => setShowAllPhotos(true)}
+                >
+                  <Image
+                    src={img}
+                    alt={`${property?.title || "Property"} view ${idx + 2}`}
+                    fill
+                    className="object-cover rounded-md"
+                  />
+                </div>
+              ))}
+              
+              {/* Show "View all" button only if there are more than 4 total images */}
+              {imageCount > 5 && (
+                <div 
+                  className="relative w-28 h-28 flex-shrink-0 bg-black bg-opacity-60 rounded-md flex items-center justify-center cursor-pointer"
+                  onClick={() => setShowAllPhotos(true)}
+                >
+                  <span className="text-white font-medium text-xs p-1">View all {allImages.length} photos</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -291,172 +497,9 @@ export default function PropertyDetail({ params }) {
           </div>
         </div>
         
-        {/* Image Gallery - UPDATED FOR MOBILE RESPONSIVENESS */}
-        <div className="relative mb-8">
-          {/* View all photos button */}
-          <button 
-            type="button"
-            onClick={() => setShowAllPhotos(true)}
-            className="absolute top-4 right-4 z-10 bg-white rounded-full px-4 py-2 flex items-center text-sm font-medium shadow-md hover:bg-gray-100 transition-colors"
-          >
-            <Camera size={16} className="mr-2" />
-            View all photos
-          </button>
-          
-          {/* Desktop Grid Layout (md and up) */}
-          <div className="hidden md:grid md:grid-cols-4 md:gap-4 md:h-[60vh]">
-            {/* Main large image (left column) */}
-            <div 
-              className="col-span-2 row-span-2 relative rounded-l-xl overflow-hidden cursor-pointer"
-              onClick={() => setShowAllPhotos(true)}
-            >
-              <Image
-                src={property.main_image}
-                alt={property.title}
-                fill
-                className="object-cover transform transition-transform duration-500 hover:scale-105"
-                priority
-              />
-            </div>
-            
-            {/* Top right images */}
-            <div className="relative overflow-hidden">
-              <div
-                className="w-full h-full cursor-pointer"
-                onClick={() => setActiveImage(property.side_image1)}
-                onKeyDown={(e) => handleKeyDown(e, 1)}
-                tabIndex={0}
-                role="button"
-                aria-label="View side image 1"
-              >
-                <Image
-                  src={property.side_image1}
-                  alt={`${property.title} side view 1`}
-                  fill
-                  className="object-cover transform transition-transform duration-500 hover:scale-105"
-                />
-              </div>
-            </div>
-            
-            <div className="relative overflow-hidden">
-              <div
-                className="w-full h-full cursor-pointer"
-                onClick={() => setActiveImage(property.side_image2)}
-                onKeyDown={(e) => handleKeyDown(e, 2)}
-                tabIndex={0}
-                role="button"
-                aria-label="View side image 2"
-              >
-                <Image
-                  src={property.side_image2}
-                  alt={`${property.title} side view 2`}
-                  fill
-                  className="object-cover rounded-tr-xl transform transition-transform duration-500 hover:scale-105"
-                />
-              </div>
-            </div>
-            
-            {/* Bottom right images */}
-            <div className="relative overflow-hidden">
-              <div
-                className="w-full h-full cursor-pointer"
-                onClick={() => setActiveImage(property.extra_images[0])}
-                onKeyDown={(e) => handleKeyDown(e, 3)}
-                tabIndex={0}
-                role="button"
-                aria-label="View extra image 1"
-              >
-                <Image
-                  src={property.extra_images[0]}
-                  alt={`${property.title} extra view 1`}
-                  fill
-                  className="object-cover transform transition-transform duration-500 hover:scale-105"
-                />
-              </div>
-            </div>
-            
-            <div className="relative overflow-hidden">
-              {property.extra_images.length > 1 ? (
-                <div
-                  className="relative w-full h-full cursor-pointer"
-                  onClick={() => property.extra_images.length > 1 ? setActiveImage(property.extra_images[1]) : setShowAllPhotos(true)}
-                  onKeyDown={(e) => handleKeyDown(e, 4)}
-                  tabIndex={0}
-                  role="button"
-                  aria-label="View extra image 2"
-                >
-                  <Image
-                    src={property.extra_images[1]}
-                    alt={`${property.title} extra view 2`}
-                    fill
-                    className="object-cover rounded-br-xl transform transition-transform duration-500 hover:scale-105"
-                  />
-                  
-                  {/* Calculate how many more images we have after the 4 shown in the grid */}
-                  {(property.extra_images.length > 1) && (
-                    <div 
-                      className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white font-medium rounded-br-xl cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowAllPhotos(true);
-                      }}
-                    >
-                      +{allImages.length - 4} more
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="w-full h-full bg-gray-100 flex items-center justify-center rounded-br-xl">
-                  <span className="text-gray-400">No image</span>
-                </div>
-              )}
-            </div>
-          </div>
-          
-          {/* Mobile Stack Layout (small screens) */}
-          <div className="md:hidden flex flex-col space-y-2">
-            {/* Main image */}
-            <div 
-              className="relative w-full h-64 rounded-t-xl overflow-hidden cursor-pointer"
-              onClick={() => setShowAllPhotos(true)}
-            >
-              <Image
-                src={property.main_image}
-                alt={property.title}
-                fill
-                className="object-cover"
-                priority
-              />
-            </div>
-            
-            {/* Horizontal scroll for small previews */}
-            <div className="flex overflow-x-auto space-x-2 pb-2">
-              {allImages.slice(1).map((img, idx) => (
-                <div 
-                  key={idx}
-                  className="relative w-28 h-28 flex-shrink-0 cursor-pointer"
-                  onClick={() => setShowAllPhotos(true)}
-                >
-                  <Image
-                    src={img}
-                    alt={`${property.title} view ${idx + 2}`}
-                    fill
-                    className="object-cover rounded-md"
-                  />
-                </div>
-              ))}
-              
-              {/* Show more button */}
-              {allImages.length > 4 && (
-                <div 
-                  className="relative w-28 h-28 flex-shrink-0 bg-black bg-opacity-60 rounded-md flex items-center justify-center cursor-pointer"
-                  onClick={() => setShowAllPhotos(true)}
-                >
-                  <span className="text-white font-medium text-xs p-1">View all {allImages.length} photos</span>
-                </div>
-              )}
-            </div>
-          </div>
+        {/* Image Gallery */}
+        <div className="mb-8">
+          {getImageGrid()}
         </div>
         
         {/* Property Details */}

@@ -1,5 +1,6 @@
 // stores/propertyFormStore.js
 import { create } from 'zustand'
+import { toast } from 'react-hot-toast'
 
 const usePropertyFormStore = create((set, get) => ({
   // Form mode (create or edit)
@@ -18,11 +19,14 @@ const usePropertyFormStore = create((set, get) => ({
   side_image2: null,
   extra_images: [],
   
-  // Image URLs (for uploaded images)
+  // Image URLs (for uploaded images or existing images)
   main_image_url: "",
   side_image1_url: "",
   side_image2_url: "",
   extra_image_urls: [],
+  
+  // Track deleted images to be removed from storage
+  deleted_image_urls: [],
   
   // Location form data
   location: {
@@ -62,6 +66,30 @@ const usePropertyFormStore = create((set, get) => ({
   setEditMode: (propertyId, propertyData) => set((state) => {
     // Extract the property data and populate the form
     if (propertyData) {
+      // For existing images, we need to set both the preview and the URL
+      const imagePreviewsData = {
+        main_image: propertyData.main_image || null,
+        side_image1: propertyData.side_image1 || null,
+        side_image2: propertyData.side_image2 || null,
+        extra_images: propertyData.extra_images || []
+      };
+      
+      // Transform amenities if needed
+      // API returns amenities as { category: [ {name, svg}, ... ] }
+      // We need { category: { name: true, ... } }
+      let formattedAmenities = {};
+      
+      if (propertyData.amenities) {
+        Object.entries(propertyData.amenities).forEach(([category, amenitiesList]) => {
+          formattedAmenities[category] = {};
+          amenitiesList.forEach(amenity => {
+            formattedAmenities[category][amenity.name] = true;
+          });
+        });
+      }
+      
+      console.log("Setting edit mode with amenities:", formattedAmenities);
+      
       return {
         ...state,
         mode: 'edit',
@@ -70,11 +98,13 @@ const usePropertyFormStore = create((set, get) => ({
         description: propertyData.description || "",
         price: propertyData.price || "",
         price_description: propertyData.price_description || "daily",
+        custom_price_description: propertyData.price_description === "custom" ? propertyData.price_description : "",
         currency: propertyData.currency || "USD",
         main_image_url: propertyData.main_image || "",
         side_image1_url: propertyData.side_image1 || "",
         side_image2_url: propertyData.side_image2 || "",
         extra_image_urls: propertyData.extra_images || [],
+        deleted_image_urls: [], // Reset the deleted images array
         location: {
           street: propertyData.location?.street || "",
           apt: propertyData.location?.apt || "",
@@ -90,13 +120,8 @@ const usePropertyFormStore = create((set, get) => ({
         number_of_beds: propertyData.number_of_beds || 1,
         number_of_bathrooms: propertyData.number_of_bathrooms || 1,
         additional_info: propertyData.additional_info || "",
-        amenities: propertyData.amenities || {},
-        imagePreviews: {
-          main_image: propertyData.main_image || null,
-          side_image1: propertyData.side_image1 || null,
-          side_image2: propertyData.side_image2 || null,
-          extra_images: propertyData.extra_images || []
-        }
+        amenities: formattedAmenities,
+        imagePreviews: imagePreviewsData
       };
     }
     
@@ -115,10 +140,35 @@ const usePropertyFormStore = create((set, get) => ({
   })),
   
   // Methods to update state
-  updateBasicInfo: (data) => set((state) => ({
-    ...state,
-    ...data
-  })),
+  updateBasicInfo: (data) => set((state) => {
+    // If we're removing images that had URLs, add them to the deleted_image_urls array
+    const updatedDeletedUrls = [...state.deleted_image_urls];
+    
+    // Track URLs to remove
+    if (data.main_image === null && state.main_image_url) {
+      updatedDeletedUrls.push(state.main_image_url);
+    }
+    
+    if (data.side_image1 === null && state.side_image1_url) {
+      updatedDeletedUrls.push(state.side_image1_url);
+    }
+    
+    if (data.side_image2 === null && state.side_image2_url) {
+      updatedDeletedUrls.push(state.side_image2_url);
+    }
+    
+    // For extra images, we'd need to check which ones were removed
+    if (data.extra_image_urls && state.extra_image_urls) {
+      const removedUrls = state.extra_image_urls.filter(url => !data.extra_image_urls.includes(url));
+      updatedDeletedUrls.push(...removedUrls);
+    }
+    
+    return {
+      ...state,
+      ...data,
+      deleted_image_urls: updatedDeletedUrls
+    };
+  }),
   
   updateLocation: (data) => set((state) => ({
     ...state,
@@ -134,7 +184,7 @@ const usePropertyFormStore = create((set, get) => ({
   })),
   
   updateAmenity: (category, amenityName, value) => set((state) => {
-    const updatedAmenities = JSON.parse(JSON.stringify(state.amenities || {}));
+    const updatedAmenities = {...state.amenities};
     
     // Initialize the category if it doesn't exist
     if (!updatedAmenities[category]) {
@@ -157,6 +207,9 @@ const usePropertyFormStore = create((set, get) => ({
         delete updatedAmenities[category];
       }
     }
+    
+    console.log(`Updated amenity ${category}/${amenityName} to:`, value);
+    console.log("Updated amenities:", updatedAmenities);
     
     return {
       ...state,
@@ -195,7 +248,43 @@ const usePropertyFormStore = create((set, get) => ({
     };
   }),
   
-  // Upload image to Supabase and get the URL
+  // Delete images from Supabase storage through our API
+  deleteImages: async (urls) => {
+    if (!urls || !urls.length) return true;
+    
+    // Array to store promises for all delete operations
+    const deletePromises = urls.map(async (url) => {
+      if (!url) return true;
+      
+      try {
+        const response = await fetch('/api/upload', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ filepath: url })
+        });
+        
+        if (!response.ok) {
+          console.error(`Failed to delete image: ${url}`);
+          return false;
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error deleting image:', error);
+        return false;
+      }
+    });
+    
+    // Wait for all delete operations to complete
+    const results = await Promise.all(deletePromises);
+    
+    // Return true if all images were deleted successfully
+    return results.every(result => result);
+  },
+  
+  // Upload image to Supabase through our API and get the URL
   uploadImage: async (file) => {
     if (!file) return null;
     
@@ -209,110 +298,148 @@ const usePropertyFormStore = create((set, get) => ({
       });
       
       if (!response.ok) {
-        throw new Error('Failed to upload image');
+        const errorText = await response.text();
+        console.error("Upload error response:", errorText);
+        throw new Error('Failed to upload image: ' + errorText);
       }
       
-      const urls = await response.json();
-      return urls[0];
+      // Handle the response differently depending on its structure
+      const result = await response.json();
+      console.log("Upload success result:", result);
+      
+      // Check if result is an array directly
+      if (Array.isArray(result) && result.length > 0) {
+        return result[0]; // Return the first URL
+      }
+      
+      // Check if result has a urls property that's an array
+      if (result.urls && Array.isArray(result.urls) && result.urls.length > 0) {
+        return result.urls[0];
+      }
+      
+      // If result is a string, return it
+      if (typeof result === 'string') {
+        return result;
+      }
+      
+      console.error('Unexpected upload response format:', result);
+      throw new Error('Invalid response format from upload API');
     } catch (error) {
       console.error('Error uploading image:', error);
+      toast.error('Image upload failed: ' + error.message);
       return null;
     }
   },
   
-  // Delete image from Supabase storage
-  deleteImage: async (url) => {
-    if (!url) return true;
-    
-    try {
-      const response = await fetch('/api/upload', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ filepath: url })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete image');
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error deleting image:', error);
-      return false;
-    }
-  },
-  
-  setCurrentStep: (step) => set({ currentStep: step }),
-  
-  nextStep: () => set((state) => ({ 
-    currentStep: Math.min(state.totalSteps - 1, state.currentStep + 1) 
-  })),
-  
-  prevStep: () => set((state) => ({ 
-    currentStep: Math.max(0, state.currentStep - 1) 
-  })),
-  
-  setSubmitting: (isSubmitting) => set({ isSubmitting }),
-  
-  setSubmitError: (error) => set({ submitError: error }),
-  
   // Upload all images and get URLs
   uploadAllImages: async () => {
     const state = get();
-    const store = usePropertyFormStore;
     
-    // Set submitting state
-    store.setState({ isSubmitting: true, submitError: null });
+    // Set submitting state without advancing to next step
+    set({ isSubmitting: true, submitError: null });
     
     try {
-      // Upload main image
-      let mainImageUrl = state.main_image_url;
+      const uploadPromises = [];
+      const uploadResults = {};
+      
+      // Upload main image if it's a file (not a URL)
       if (state.main_image && typeof state.main_image !== 'string') {
-        mainImageUrl = await state.uploadImage(state.main_image);
+        console.log('Uploading main_image...');
+        uploadPromises.push(
+          (async () => {
+            const url = await state.uploadImage(state.main_image);
+            if (url) {
+              console.log('Main image uploaded successfully:', url);
+              uploadResults.main_image_url = url;
+            }
+          })()
+        );
+      } else if (state.main_image_url) {
+        console.log('Using existing main_image_url:', state.main_image_url);
+        uploadResults.main_image_url = state.main_image_url;
       }
       
       // Upload side image 1
-      let sideImage1Url = state.side_image1_url;
       if (state.side_image1 && typeof state.side_image1 !== 'string') {
-        sideImage1Url = await state.uploadImage(state.side_image1);
+        console.log('Uploading side_image1...');
+        uploadPromises.push(
+          (async () => {
+            const url = await state.uploadImage(state.side_image1);
+            if (url) {
+              console.log('Side image 1 uploaded successfully:', url);
+              uploadResults.side_image1_url = url;
+            }
+          })()
+        );
+      } else if (state.side_image1_url) {
+        console.log('Using existing side_image1_url:', state.side_image1_url);
+        uploadResults.side_image1_url = state.side_image1_url;
       }
       
       // Upload side image 2
-      let sideImage2Url = state.side_image2_url;
       if (state.side_image2 && typeof state.side_image2 !== 'string') {
-        sideImage2Url = await state.uploadImage(state.side_image2);
+        console.log('Uploading side_image2...');
+        uploadPromises.push(
+          (async () => {
+            const url = await state.uploadImage(state.side_image2);
+            if (url) {
+              console.log('Side image 2 uploaded successfully:', url);
+              uploadResults.side_image2_url = url;
+            }
+          })()
+        );
+      } else if (state.side_image2_url) {
+        console.log('Using existing side_image2_url:', state.side_image2_url);
+        uploadResults.side_image2_url = state.side_image2_url;
       }
       
-      // Upload extra images
-      let extraImageUrls = [...state.extra_image_urls];
+      // Process extra images
+      const extraImagePromises = [];
+      const currentExtraUrls = [...state.extra_image_urls];
       
+      // Upload new extra images (files)
       if (state.extra_images && state.extra_images.length > 0) {
-        const uploadPromises = state.extra_images.map(img => {
+        console.log(`Uploading ${state.extra_images.length} extra images...`);
+        for (const img of state.extra_images) {
           if (typeof img !== 'string') {
-            return state.uploadImage(img);
+            extraImagePromises.push(state.uploadImage(img));
           }
-          return null;
-        });
-        
-        const newUrls = await Promise.all(uploadPromises);
-        extraImageUrls = [...extraImageUrls, ...newUrls.filter(url => url !== null)];
+        }
+      }
+      
+      // Wait for extra image uploads to complete
+      const newExtraUrls = await Promise.all(extraImagePromises);
+      uploadResults.extra_image_urls = [
+        ...currentExtraUrls,
+        ...newExtraUrls.filter(url => url !== null)
+      ];
+      
+      console.log('Extra images uploaded successfully:', uploadResults.extra_image_urls);
+      
+      // Wait for all uploads to complete
+      await Promise.all(uploadPromises);
+      
+      // Delete images marked for deletion
+      if (state.deleted_image_urls && state.deleted_image_urls.length > 0) {
+        console.log('Deleting images:', state.deleted_image_urls);
+        await state.deleteImages(state.deleted_image_urls);
       }
       
       // Update state with image URLs
-      store.setState({
-        main_image_url: mainImageUrl,
-        side_image1_url: sideImage1Url,
-        side_image2_url: sideImage2Url,
-        extra_image_urls: extraImageUrls,
+      set({
+        main_image_url: uploadResults.main_image_url || state.main_image_url,
+        side_image1_url: uploadResults.side_image1_url || state.side_image1_url,
+        side_image2_url: uploadResults.side_image2_url || state.side_image2_url,
+        extra_image_urls: uploadResults.extra_image_urls || state.extra_image_urls,
+        deleted_image_urls: [], // Clear deleted images array
         isSubmitting: false
       });
       
+      console.log("Image upload complete, results:", uploadResults);
       return true;
     } catch (error) {
       console.error('Error uploading images:', error);
-      store.setState({ isSubmitting: false, submitError: 'Failed to upload images' });
+      set({ isSubmitting: false, submitError: 'Failed to upload images: ' + error.message });
       return false;
     }
   },
@@ -332,8 +459,25 @@ const usePropertyFormStore = create((set, get) => ({
       ? state.custom_price_description 
       : state.price_description;
     
-    // Ensure amenities is properly structured
-    const amenities = JSON.parse(JSON.stringify(state.amenities || {}));
+    // Create amenities structure for API
+    // API expects: { category: [{name, svg}, ...], ... }
+    // We have: { category: {name: true, ...}, ... }
+    const amenitiesForApi = {};
+    
+    Object.entries(state.amenities || {}).forEach(([category, amenities]) => {
+      if (!amenitiesForApi[category]) {
+        amenitiesForApi[category] = [];
+      }
+      
+      Object.keys(amenities).forEach(name => {
+        if (amenities[name] === true) {
+          amenitiesForApi[category].push({ name });
+        }
+      });
+    });
+    
+    // Get the latest state after image uploads
+    const currentState = get();
     
     // Create the final property data
     const propertyData = {
@@ -342,12 +486,12 @@ const usePropertyFormStore = create((set, get) => ({
       price: parseFloat(state.price || 0),
       price_description: finalPriceDescription,
       currency: state.currency,
-      main_image: state.main_image_url,
-      side_image1: state.side_image1_url,
-      side_image2: state.side_image2_url,
-      extra_images: state.extra_image_urls,
+      main_image: currentState.main_image_url,  // Use the URL, not the file
+      side_image1: currentState.side_image1_url,
+      side_image2: currentState.side_image2_url,
+      extra_images: currentState.extra_image_urls,
       location: {
-        address: `${state.location.street}, ${state.location.city}, ${state.location.state} ${state.location.zip}, ${state.location.country}`,
+        address: `${state.location.street}, ${state.location.city}, ${state.location.state} ${state.location.zip}`,
         street: state.location.street,
         apt: state.location.apt,
         city: state.location.city,
@@ -357,24 +501,24 @@ const usePropertyFormStore = create((set, get) => ({
         latitude: state.location.latitude,
         longitude: state.location.longitude
       },
-      number_of_guests: state.number_of_guests,
-      number_of_bedrooms: state.number_of_bedrooms,
-      number_of_beds: state.number_of_beds,
-      number_of_bathrooms: state.number_of_bathrooms,
+      number_of_guests: parseInt(state.number_of_guests) || 1,
+      number_of_bedrooms: parseInt(state.number_of_bedrooms) || 1,
+      number_of_beds: parseInt(state.number_of_beds) || 1,
+      number_of_bathrooms: parseInt(state.number_of_bathrooms) || 1,
       additional_info: state.additional_info,
-      amenities: amenities,
+      amenities: amenitiesForApi,
       is_active: true
     };
     
+    console.log("Final property data:", propertyData);
     return propertyData;
   },
   
   // Submit the property data to the API
   submitProperty: async () => {
     const state = get();
-    const store = usePropertyFormStore;
     
-    store.setState({ isSubmitting: true, submitError: null });
+    set({ isSubmitting: true, submitError: null });
     
     try {
       // Get the final property data
@@ -386,6 +530,8 @@ const usePropertyFormStore = create((set, get) => ({
         : '/api/listings';
       
       const method = state.mode === 'edit' ? 'PUT' : 'POST';
+      
+      console.log(`${method} request to ${endpoint} with data:`, propertyData);
       
       // Make the API request
       const response = await fetch(endpoint, {
@@ -402,15 +548,30 @@ const usePropertyFormStore = create((set, get) => ({
       }
       
       const result = await response.json();
+      console.log("API response:", result);
       
-      store.setState({ isSubmitting: false });
+      set({ isSubmitting: false });
       return result;
     } catch (error) {
       console.error('Error submitting property:', error);
-      store.setState({ isSubmitting: false, submitError: error.message });
+      set({ isSubmitting: false, submitError: error.message });
       throw error;
     }
   },
+  
+  setCurrentStep: (step) => set({ currentStep: step }),
+  
+  nextStep: () => set((state) => ({ 
+    currentStep: Math.min(state.totalSteps - 1, state.currentStep + 1) 
+  })),
+  
+  prevStep: () => set((state) => ({ 
+    currentStep: Math.max(0, state.currentStep - 1) 
+  })),
+  
+  setSubmitting: (isSubmitting) => set({ isSubmitting }),
+  
+  setSubmitError: (error) => set({ submitError: error }),
   
   resetForm: () => set({
     mode: 'create',
@@ -429,6 +590,7 @@ const usePropertyFormStore = create((set, get) => ({
     side_image1_url: "",
     side_image2_url: "",
     extra_image_urls: [],
+    deleted_image_urls: [],
     location: {
       street: "",
       apt: "",
@@ -455,5 +617,6 @@ const usePropertyFormStore = create((set, get) => ({
       extra_images: []
     }
   })
-})
-)
+}))
+
+export default usePropertyFormStore

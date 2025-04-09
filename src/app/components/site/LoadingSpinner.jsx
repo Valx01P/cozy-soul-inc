@@ -1,9 +1,16 @@
+// src/app/components/site/LoadingSpinner.jsx
 import Image from 'next/image'
 
-export default function LoadingSpinner() {
+export default function LoadingSpinner({ size = 40 }) {
   return (
-    <div className='text-center bg-white'>
-      <Image src='/svg/red-logo.svg' alt='logo' width={40} height={40} className='animate-spin mx-auto mb-4' />
+    <div className='text-center'>
+      <Image 
+        src='/svg/red-logo.svg' 
+        alt='Loading' 
+        width={size} 
+        height={size} 
+        className='animate-spin mx-auto' 
+      />
     </div>
   )
 }

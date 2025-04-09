@@ -1,6 +1,8 @@
-"use client"
+'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'react-hot-toast'
 import { FormStepper } from './FormStepper'
 import { BasicInfoFormStep } from './BasicInfoFormStep'
 import { LocationFormStep } from './LocationFormStep'
@@ -8,13 +10,20 @@ import { DetailsFormStep } from './DetailsFormStep'
 import { ConfirmSubmitStep } from './ConfirmSubmitStep'
 import usePropertyFormStore from "../../../stores/propertyFormStore"
 
-export function PropertyForm() {
+export default function PropertyForm() {
+  const router = useRouter()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  
   const { 
+    mode,
+    propertyId,
     currentStep, 
     setCurrentStep, 
     nextStep, 
     prevStep, 
-    getFinalPropertyData, 
+    submitProperty,
+    submitError,
+    setSubmitError,
     resetForm 
   } = usePropertyFormStore(state => state)
 
@@ -54,19 +63,19 @@ export function PropertyForm() {
     if (currentStep === 0) {
       // Basic Info validation
       if (!state.title || !state.description || !state.price) {
-        alert("Please fill out all required fields in Basic Info section");
+        toast.error("Please fill out all required fields in Basic Info section");
         return false;
       }
     } else if (currentStep === 1) {
       // Location validation
       if (!state.location.street || !state.location.city || !state.location.state || !state.location.zip) {
-        alert("Please fill out all required fields in Location section");
+        toast.error("Please fill out all required fields in Location section");
         return false;
       }
     } else if (currentStep === 2) {
       // Details validation
       if (!state.number_of_guests || !state.number_of_bedrooms || !state.number_of_beds) {
-        alert("Please fill out all required fields in Details section");
+        toast.error("Please fill out all required fields in Details section");
         return false;
       }
       
@@ -89,10 +98,10 @@ export function PropertyForm() {
   }
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // If we're not on the last step, move to the next one
+    // If we're not on the last step, validate and move to the next one
     if (currentStep < steps.length - 1) {
       if (validateCurrentStep()) {
         nextStep();
@@ -102,16 +111,28 @@ export function PropertyForm() {
     
     // We're on the last step (confirmation), so submit the form
     try {
-      // Generate the final property data
-      const propertyData = getFinalPropertyData();
-      console.log("Final property data:", propertyData);
-      console.log("Final amenities data:", propertyData.Properties[0].amenities);
+      setIsSubmitting(true);
+      setSubmitError(null);
       
-      // Show the full JSON data
-      alert(JSON.stringify(propertyData, null, 2));
+      // Submit the property
+      const result = await submitProperty();
+      
+      if (result && result.success) {
+        toast.success(mode === 'edit' ? 'Property updated successfully!' : 'Property created successfully!');
+        
+        // Redirect to the admin listings page
+        setTimeout(() => {
+          router.push('/admin');
+        }, 1500);
+      } else {
+        throw new Error(result?.error || 'Failed to submit property');
+      }
     } catch (error) {
-      console.error("Error generating final property data:", error);
-      alert("An error occurred while generating the final property data. Please check the console for more details.");
+      console.error("Error submitting property:", error);
+      toast.error(error.message || "Failed to submit property. Please try again.");
+      setSubmitError(error.message || "Failed to submit property");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -133,9 +154,13 @@ export function PropertyForm() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-2">List Your Property</h1>
+      <h1 className="text-2xl font-bold mb-2">
+        {mode === 'edit' ? 'Edit Your Property' : 'List Your Property'}
+      </h1>
       <p className="text-gray-600 mb-8">
-        Complete the form below to list your property on our platform.
+        {mode === 'edit' 
+          ? 'Update your property listing information below.' 
+          : 'Complete the form below to list your property on our platform.'}
       </p>
       
       {/* Progress Stepper */}
@@ -156,14 +181,22 @@ export function PropertyForm() {
           {steps[currentStep].component}
         </div>
         
+        {/* Error message */}
+        {submitError && (
+          <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg">
+            <p className="font-medium">Error:</p>
+            <p>{submitError}</p>
+          </div>
+        )}
+        
         {/* Navigation Buttons */}
         <div className="flex justify-between pt-6 border-t border-gray-100">
           <button
             type="button"
             onClick={prevStep}
-            disabled={currentStep === 0}
+            disabled={currentStep === 0 || isSubmitting}
             className={`px-6 py-3 rounded-lg font-medium transition
-              ${currentStep === 0
+              ${(currentStep === 0 || isSubmitting)
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
               }
@@ -174,14 +207,26 @@ export function PropertyForm() {
           
           <button
             type="submit"
+            disabled={isSubmitting}
             className={`px-6 py-3 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 transition
               ${currentStep === steps.length - 1
                 ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500' 
                 : 'bg-[var(--primary-red)] text-white hover:bg-[var(--primary-red-hover)] focus:ring-[var(--primary-red)]'
               }
+              ${isSubmitting ? 'opacity-75 cursor-not-allowed' : ''}
             `}
           >
-            {currentStep < steps.length - 1 ? 'Continue' : 'Submit Property'}
+            {isSubmitting ? (
+              <span className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {currentStep < steps.length - 1 ? 'Processing...' : 'Submitting...'}
+              </span>
+            ) : (
+              currentStep < steps.length - 1 ? 'Continue' : 'Submit Property'
+            )}
           </button>
         </div>
       </form>
