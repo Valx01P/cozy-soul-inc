@@ -57,13 +57,19 @@ export default function AdminNav() {
     setShowUserMenu(!showUserMenu);
   };
   
-  const handleLogout = () => {
-    logout();
-    // Redirect to login page or home page
-    window.location.href = '/admin';
+  const handleLogout = async () => {
+    try {
+      // Wait for the logout function to complete
+      await logout();
+      
+      // Add a small delay to ensure state updates are processed
+      setTimeout(() => {
+        window.location.href = '/admin';
+      }, 100);
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
   };
-
-
 
   if (!isAuthenticated) {
     return null; // Don't render nav if not authenticated
@@ -167,13 +173,10 @@ export default function AdminNav() {
         </div>
       </nav>
 
-
-
       {/* Mobile menu, show/hide based on menu state */}
       {isMenuOpen && (
         <div className="sm:hidden">
           <div className="pt-2 pb-3 space-y-1">
-
             
             <Link
               href="/admin"
@@ -207,8 +210,6 @@ export default function AdminNav() {
                 Back to Site
               </div>
             </Link>
-            
-
             
             <button
               onClick={handleLogout}

@@ -77,7 +77,7 @@ export async function verifyRefreshToken(token) {
  * @param {string} refreshToken - JWT refresh token
  */
 export async function setAuthCookies(accessToken, refreshToken) {
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   
   // Set access token as HTTP-only cookie
   cookieStore.set('access_token', accessToken, {
@@ -100,7 +100,7 @@ export async function setAuthCookies(accessToken, refreshToken) {
  * Clears auth cookies
  */
 export async function clearAuthCookies() {
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   
   cookieStore.set('access_token', '', {
     httpOnly: true,
@@ -118,11 +118,20 @@ export async function clearAuthCookies() {
 }
 
 /**
- * Gets auth tokens from cookies
+ * Gets auth tokens from cookies in a request
+ * @param {Object} request - The Next.js request object
  * @returns {Object} Object containing access and refresh tokens
  */
-export async function getAuthTokens() {
-  const cookieStore = await cookies();
+export async function getAuthTokens(request) {
+  // If request is provided (for API routes), get tokens from request cookies
+  if (request) {
+    const accessToken = request.cookies.get('access_token')?.value;
+    const refreshToken = request.cookies.get('refresh_token')?.value;
+    return { accessToken, refreshToken };
+  }
+  
+  // Otherwise (for server components), get tokens from the cookies() API
+  const cookieStore = cookies();
   const accessToken = cookieStore.get('access_token')?.value;
   const refreshToken = cookieStore.get('refresh_token')?.value;
   

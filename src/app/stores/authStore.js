@@ -69,6 +69,13 @@ const useAuthStore = create(
             isLoading: false,
             error: null
           })
+          
+          // Clear local storage persisted state
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth-storage')
+          }
+          
+          return true
         } catch (error) {
           set({ error: error.message, isLoading: false })
           throw error
