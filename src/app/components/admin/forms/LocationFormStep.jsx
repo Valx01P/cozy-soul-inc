@@ -18,7 +18,11 @@ let isGoogleMapsLoading = false
 
 export function LocationFormStep() {
   // Get state and methods from the store
-  const { location, updateLocation } = usePropertyFormStore((state) => state)
+  const { 
+    location, 
+    updateLocation,
+    mode // Get the current mode (create or edit)
+  } = usePropertyFormStore((state) => state)
   
   // Map and loading state
   const [map, setMap] = useState(null)
@@ -27,6 +31,7 @@ export function LocationFormStep() {
   const [isMapReady, setIsMapReady] = useState(false)
   const mapRef = useRef(null)
   const mapsInitializedRef = useRef(false)
+  const locationInitializedRef = useRef(false)
 
   // Load Google Maps API only once
   useEffect(() => {
@@ -119,11 +124,18 @@ export function LocationFormStep() {
 
     setMap(mapInstance)
     setMarker(markerInstance)
+    
+    // Mark that we've set up the map
+    locationInitializedRef.current = true
   }, [isMapReady, location.latitude, location.longitude])
 
-  // Try to get user's current location
+  // Try to get user's current location ONLY when creating a new property
   useEffect(() => {
-    if (!map || !marker) return
+    // Skip this if:
+    // 1. Map or marker isn't initialized yet
+    // 2. We're in edit mode
+    // 3. We've already initialized the location (to prevent re-triggering)
+    if (!map || !marker || mode === 'edit' || locationInitializedRef.current) return
     
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -149,7 +161,7 @@ export function LocationFormStep() {
         }
       )
     }
-  }, [map, marker, updateLocation])
+  }, [map, marker, updateLocation, mode])
 
   // Update location from coordinates
   const updateLocationFromLatLng = async (lat, lng) => {

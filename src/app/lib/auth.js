@@ -77,7 +77,7 @@ export async function verifyRefreshToken(token) {
  * @param {string} refreshToken - JWT refresh token
  */
 export async function setAuthCookies(accessToken, refreshToken) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   
   // Set access token as HTTP-only cookie
   cookieStore.set('access_token', accessToken, {
@@ -100,7 +100,7 @@ export async function setAuthCookies(accessToken, refreshToken) {
  * Clears auth cookies
  */
 export async function clearAuthCookies() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   
   cookieStore.set('access_token', '', {
     httpOnly: true,
@@ -131,7 +131,7 @@ export async function getAuthTokens(request) {
   }
   
   // Otherwise (for server components), get tokens from the cookies() API
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const accessToken = cookieStore.get('access_token')?.value;
   const refreshToken = cookieStore.get('refresh_token')?.value;
   

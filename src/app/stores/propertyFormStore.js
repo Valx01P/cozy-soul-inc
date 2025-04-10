@@ -1,7 +1,11 @@
-// stores/propertyFormStore.js
+// src/app/stores/propertyFormStore.js
 import { create } from 'zustand'
 import { toast } from 'react-hot-toast'
 
+/**
+ * Store for managing property form state in the multi-step form
+ * Handles both creation and editing of properties
+ */
 const usePropertyFormStore = create((set, get) => ({
   // Form mode (create or edit)
   mode: 'create',
@@ -62,89 +66,169 @@ const usePropertyFormStore = create((set, get) => ({
     extra_images: []
   },
   
-  // Set form mode and initialize data for editing
+  /**
+   * Initialize form for editing an existing property
+   * @param {string|number} propertyId - ID of property to edit
+   * @param {Object} propertyData - Property data from API
+   */
   setEditMode: (propertyId, propertyData) => set((state) => {
-    // Extract the property data and populate the form
-    if (propertyData) {
-      // For existing images, we need to set both the preview and the URL
-      const imagePreviewsData = {
-        main_image: propertyData.main_image || null,
-        side_image1: propertyData.side_image1 || null,
-        side_image2: propertyData.side_image2 || null,
-        extra_images: propertyData.extra_images || []
-      };
-      
-      // Transform amenities if needed
-      // API returns amenities as { category: [ {name, svg}, ... ] }
-      // We need { category: { name: true, ... } }
-      let formattedAmenities = {};
-      
-      if (propertyData.amenities) {
-        Object.entries(propertyData.amenities).forEach(([category, amenitiesList]) => {
-          formattedAmenities[category] = {};
-          amenitiesList.forEach(amenity => {
-            formattedAmenities[category][amenity.name] = true;
-          });
-        });
-      }
-      
-      console.log("Setting edit mode with amenities:", formattedAmenities);
-      
+    // If no property data provided, just set mode and ID
+    if (!propertyData) {
       return {
         ...state,
         mode: 'edit',
-        propertyId,
-        title: propertyData.title || "",
-        description: propertyData.description || "",
-        price: propertyData.price || "",
-        price_description: propertyData.price_description || "daily",
-        custom_price_description: propertyData.price_description === "custom" ? propertyData.price_description : "",
-        currency: propertyData.currency || "USD",
-        main_image_url: propertyData.main_image || "",
-        side_image1_url: propertyData.side_image1 || "",
-        side_image2_url: propertyData.side_image2 || "",
-        extra_image_urls: propertyData.extra_images || [],
-        deleted_image_urls: [], // Reset the deleted images array
-        location: {
-          street: propertyData.location?.street || "",
-          apt: propertyData.location?.apt || "",
-          city: propertyData.location?.city || "",
-          state: propertyData.location?.state || "",
-          zip: propertyData.location?.zip || "",
-          country: propertyData.location?.country || "US",
-          latitude: propertyData.location?.latitude || 25.7617,
-          longitude: propertyData.location?.longitude || -80.1918
-        },
-        number_of_guests: propertyData.number_of_guests || 1,
-        number_of_bedrooms: propertyData.number_of_bedrooms || 1,
-        number_of_beds: propertyData.number_of_beds || 1,
-        number_of_bathrooms: propertyData.number_of_bathrooms || 1,
-        additional_info: propertyData.additional_info || "",
-        amenities: formattedAmenities,
-        imagePreviews: imagePreviewsData
+        propertyId
       };
+    }
+    
+    console.log("Setting edit mode with property data:", propertyData);
+    
+    // Initialize image previews from existing URLs
+    const imagePreviewsData = {
+      main_image: propertyData.main_image || null,
+      side_image1: propertyData.side_image1 || null,
+      side_image2: propertyData.side_image2 || null,
+      extra_images: Array.isArray(propertyData.extra_images) ? [...propertyData.extra_images] : []
+    };
+    
+    // Transform amenities format if needed
+    // From API: { category: [ {name, svg}, ... ] }
+    // To store: { category: { name: true, ... } }
+    let formattedAmenities = {};
+    
+    if (propertyData.amenities) {
+      Object.entries(propertyData.amenities).forEach(([category, amenitiesList]) => {
+        formattedAmenities[category] = {};
+        
+        // Handle both array and object formats
+        if (Array.isArray(amenitiesList)) {
+          amenitiesList.forEach(amenity => {
+            formattedAmenities[category][amenity.name] = true;
+          });
+        } else {
+          Object.keys(amenitiesList).forEach(amenityName => {
+            formattedAmenities[category][amenityName] = true;
+          });
+        }
+      });
+    }
+    
+    console.log("Formatted amenities for edit mode:", formattedAmenities);
+    
+    // Set all form fields from property data
+    return {
+      ...state,
+      mode: 'edit',
+      propertyId,
+      title: propertyData.title || "",
+      description: propertyData.description || "",
+      price: propertyData.price?.toString() || "",
+      price_description: propertyData.price_description || "daily",
+      custom_price_description: propertyData.price_description === "custom" 
+        ? propertyData.custom_price_description || propertyData.price_description 
+        : "",
+      currency: propertyData.currency || "USD",
+      main_image_url: propertyData.main_image || "",
+      side_image1_url: propertyData.side_image1 || "",
+      side_image2_url: propertyData.side_image2 || "",
+      extra_image_urls: Array.isArray(propertyData.extra_images) ? [...propertyData.extra_images] : [],
+      deleted_image_urls: [], // Reset deleted images tracking
+      location: {
+        street: propertyData.location?.street || "",
+        apt: propertyData.location?.apt || "",
+        city: propertyData.location?.city || "",
+        state: propertyData.location?.state || "",
+        zip: propertyData.location?.zip || "",
+        country: propertyData.location?.country || "US",
+        latitude: propertyData.location?.latitude || 25.7617,
+        longitude: propertyData.location?.longitude || -80.1918
+      },
+      number_of_guests: propertyData.number_of_guests || 1,
+      number_of_bedrooms: propertyData.number_of_bedrooms || 1,
+      number_of_beds: propertyData.number_of_beds || 1,
+      number_of_bathrooms: propertyData.number_of_bathrooms || 1,
+      additional_info: propertyData.additional_info || "",
+      amenities: formattedAmenities,
+      imagePreviews: imagePreviewsData
+    };
+  }),
+  
+  /**
+   * Reset form to create mode
+   */
+  setCreateMode: () => set((state) => {
+    // Clean up any object URLs to prevent memory leaks
+    const cleanUpUrl = (url) => {
+      if (url && typeof url === 'string' && !url.includes('://')) {
+        URL.revokeObjectURL(url);
+      }
+    };
+    
+    cleanUpUrl(state.imagePreviews.main_image);
+    cleanUpUrl(state.imagePreviews.side_image1);
+    cleanUpUrl(state.imagePreviews.side_image2);
+    
+    if (state.imagePreviews.extra_images && state.imagePreviews.extra_images.length > 0) {
+      state.imagePreviews.extra_images.forEach(url => cleanUpUrl(url));
     }
     
     return {
       ...state,
-      mode: 'edit',
-      propertyId
+      mode: 'create',
+      propertyId: null,
+      // Reset all form fields to default values
+      title: "",
+      description: "",
+      price: "",
+      price_description: "daily",
+      custom_price_description: "",
+      currency: "USD",
+      main_image: null,
+      side_image1: null,
+      side_image2: null,
+      extra_images: [],
+      main_image_url: "",
+      side_image1_url: "",
+      side_image2_url: "",
+      extra_image_urls: [],
+      deleted_image_urls: [],
+      location: {
+        street: "",
+        apt: "",
+        city: "",
+        state: "",
+        zip: "",
+        country: "US",
+        latitude: 25.7617,
+        longitude: -80.1918
+      },
+      number_of_guests: 1,
+      number_of_bedrooms: 1,
+      number_of_beds: 1,
+      number_of_bathrooms: 1,
+      additional_info: "",
+      amenities: {},
+      currentStep: 0,
+      isSubmitting: false,
+      submitError: null,
+      imagePreviews: {
+        main_image: null,
+        side_image1: null,
+        side_image2: null,
+        extra_images: []
+      }
     };
   }),
   
-  // Set create mode and reset form
-  setCreateMode: () => set((state) => ({
-    ...state,
-    mode: 'create',
-    propertyId: null
-  })),
-  
-  // Methods to update state
+  /**
+   * Update basic info form data
+   * @param {Object} data - New data to update
+   */
   updateBasicInfo: (data) => set((state) => {
-    // If we're removing images that had URLs, add them to the deleted_image_urls array
+    // Track URLs of removed images to delete them from storage later
     const updatedDeletedUrls = [...state.deleted_image_urls];
     
-    // Track URLs to remove
+    // If an image is being removed and it had a URL, add it to deleted_image_urls
     if (data.main_image === null && state.main_image_url) {
       updatedDeletedUrls.push(state.main_image_url);
     }
@@ -157,9 +241,11 @@ const usePropertyFormStore = create((set, get) => ({
       updatedDeletedUrls.push(state.side_image2_url);
     }
     
-    // For extra images, we'd need to check which ones were removed
+    // For extra images, check which ones were removed
     if (data.extra_image_urls && state.extra_image_urls) {
-      const removedUrls = state.extra_image_urls.filter(url => !data.extra_image_urls.includes(url));
+      const removedUrls = state.extra_image_urls.filter(url => 
+        !data.extra_image_urls.includes(url)
+      );
       updatedDeletedUrls.push(...removedUrls);
     }
     
@@ -170,6 +256,10 @@ const usePropertyFormStore = create((set, get) => ({
     };
   }),
   
+  /**
+   * Update location form data
+   * @param {Object} data - New location data
+   */
   updateLocation: (data) => set((state) => ({
     ...state,
     location: {
@@ -178,11 +268,21 @@ const usePropertyFormStore = create((set, get) => ({
     }
   })),
   
+  /**
+   * Update details form data
+   * @param {Object} data - New details data
+   */
   updateDetails: (data) => set((state) => ({
     ...state,
     ...data
   })),
   
+  /**
+   * Update a specific amenity in the amenities object
+   * @param {string} category - Amenity category
+   * @param {string} amenityName - Name of the amenity
+   * @param {boolean} value - Whether the amenity is selected (true) or not (false)
+   */
   updateAmenity: (category, amenityName, value) => set((state) => {
     const updatedAmenities = {...state.amenities};
     
@@ -208,8 +308,8 @@ const usePropertyFormStore = create((set, get) => ({
       }
     }
     
-    console.log(`Updated amenity ${category}/${amenityName} to:`, value);
-    console.log("Updated amenities:", updatedAmenities);
+    console.log(`Updated amenity ${category}/${amenityName} to:`, 
+      updatedAmenities[category]?.[amenityName]);
     
     return {
       ...state,
@@ -217,9 +317,28 @@ const usePropertyFormStore = create((set, get) => ({
     };
   }),
   
+  /**
+   * Update image previews for display in the form
+   * @param {string} imageType - Type of image (main_image, side_image1, side_image2, extra_images)
+   * @param {string|Array} preview - URL or array of URLs for preview
+   * @param {number|null} index - Index for updating a specific extra image
+   */
   updateImagePreview: (imageType, preview, index = null) => set((state) => {
+    // Helper function to clean up object URLs
+    const cleanUpUrl = (url) => {
+      if (url && typeof url === 'string' && !url.includes('://')) {
+        URL.revokeObjectURL(url);
+      }
+    };
+    
     if (imageType === 'extra_images' && index !== null) {
-      const newExtraPreviews = [...state.imagePreviews.extra_images];
+      // Update a specific extra image
+      const newExtraPreviews = [...(state.imagePreviews.extra_images || [])];
+      
+      // Clean up the old preview URL if it's an object URL
+      cleanUpUrl(newExtraPreviews[index]);
+      
+      // Set the new preview
       newExtraPreviews[index] = preview;
       
       return {
@@ -230,14 +349,26 @@ const usePropertyFormStore = create((set, get) => ({
         }
       };
     } else if (imageType === 'extra_images') {
+      // Update all extra images
+      
+      // Clean up old preview URLs if they're object URLs
+      if (state.imagePreviews.extra_images && state.imagePreviews.extra_images.length > 0) {
+        state.imagePreviews.extra_images.forEach(url => cleanUpUrl(url));
+      }
+      
       return {
         ...state,
         imagePreviews: {
           ...state.imagePreviews,
-          extra_images: preview
+          extra_images: Array.isArray(preview) ? preview : []
         }
       };
     }
+    
+    // Update a single image (main_image, side_image1, side_image2)
+    
+    // Clean up the old preview URL if it's an object URL
+    cleanUpUrl(state.imagePreviews[imageType]);
     
     return {
       ...state,
@@ -248,9 +379,15 @@ const usePropertyFormStore = create((set, get) => ({
     };
   }),
   
-  // Delete images from Supabase storage through our API
+  /**
+   * Delete images from Supabase storage
+   * @param {Array} urls - Array of image URLs to delete
+   * @returns {Promise<boolean>} - Whether all deletions were successful
+   */
   deleteImages: async (urls) => {
     if (!urls || !urls.length) return true;
+    
+    console.log('Deleting images:', urls);
     
     // Array to store promises for all delete operations
     const deletePromises = urls.map(async (url) => {
@@ -266,7 +403,8 @@ const usePropertyFormStore = create((set, get) => ({
         });
         
         if (!response.ok) {
-          console.error(`Failed to delete image: ${url}`);
+          const errorText = await response.text();
+          console.error(`Failed to delete image ${url}: ${errorText}`);
           return false;
         }
         
@@ -284,7 +422,11 @@ const usePropertyFormStore = create((set, get) => ({
     return results.every(result => result);
   },
   
-  // Upload image to Supabase through our API and get the URL
+  /**
+   * Upload a single image to Supabase storage
+   * @param {File} file - Image file to upload
+   * @returns {Promise<string|null>} - URL of uploaded image or null if upload failed
+   */
   uploadImage: async (file) => {
     if (!file) return null;
     
@@ -303,21 +445,19 @@ const usePropertyFormStore = create((set, get) => ({
         throw new Error('Failed to upload image: ' + errorText);
       }
       
-      // Handle the response differently depending on its structure
+      // Parse the response
       const result = await response.json();
       console.log("Upload success result:", result);
       
-      // Check if result is an array directly
+      // Handle different response formats
       if (Array.isArray(result) && result.length > 0) {
         return result[0]; // Return the first URL
       }
       
-      // Check if result has a urls property that's an array
       if (result.urls && Array.isArray(result.urls) && result.urls.length > 0) {
         return result.urls[0];
       }
       
-      // If result is a string, return it
       if (typeof result === 'string') {
         return result;
       }
@@ -331,11 +471,14 @@ const usePropertyFormStore = create((set, get) => ({
     }
   },
   
-  // Upload all images and get URLs
+  /**
+   * Upload all images in the form and get their URLs
+   * @returns {Promise<boolean>} - Whether all uploads were successful
+   */
   uploadAllImages: async () => {
     const state = get();
     
-    // Set submitting state without advancing to next step
+    // Set submitting state
     set({ isSubmitting: true, submitError: null });
     
     try {
@@ -395,7 +538,7 @@ const usePropertyFormStore = create((set, get) => ({
       
       // Process extra images
       const extraImagePromises = [];
-      const currentExtraUrls = [...state.extra_image_urls];
+      const currentExtraUrls = [...(state.extra_image_urls || [])];
       
       // Upload new extra images (files)
       if (state.extra_images && state.extra_images.length > 0) {
@@ -439,16 +582,22 @@ const usePropertyFormStore = create((set, get) => ({
       return true;
     } catch (error) {
       console.error('Error uploading images:', error);
-      set({ isSubmitting: false, submitError: 'Failed to upload images: ' + error.message });
+      set({ 
+        isSubmitting: false, 
+        submitError: 'Failed to upload images: ' + error.message 
+      });
       return false;
     }
   },
   
-  // Generate the final property data for submission
+  /**
+   * Generate the final property data for submission to API
+   * @returns {Promise<Object>} - Property data ready for API submission
+   */
   getFinalPropertyData: async () => {
     const state = get();
     
-    // Upload all images first
+    // First upload all images
     const imagesUploaded = await state.uploadAllImages();
     if (!imagesUploaded) {
       throw new Error('Failed to upload images');
@@ -459,9 +608,9 @@ const usePropertyFormStore = create((set, get) => ({
       ? state.custom_price_description 
       : state.price_description;
     
-    // Create amenities structure for API
-    // API expects: { category: [{name, svg}, ...], ... }
-    // We have: { category: {name: true, ...}, ... }
+    // Transform amenities to API format
+    // From store: { category: {name: true, ...}, ... }
+    // To API: { category: [{name, svg}, ...], ... }
     const amenitiesForApi = {};
     
     Object.entries(state.amenities || {}).forEach(([category, amenities]) => {
@@ -514,7 +663,10 @@ const usePropertyFormStore = create((set, get) => ({
     return propertyData;
   },
   
-  // Submit the property data to the API
+  /**
+   * Submit the property data to the API
+   * @returns {Promise<Object>} - API response
+   */
   submitProperty: async () => {
     const state = get();
     
@@ -544,7 +696,7 @@ const usePropertyFormStore = create((set, get) => ({
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit property');
+        throw new Error(errorData.error || `Failed to ${state.mode} property`);
       }
       
       const result = await response.json();
@@ -559,6 +711,7 @@ const usePropertyFormStore = create((set, get) => ({
     }
   },
   
+  // Form navigation methods
   setCurrentStep: (step) => set({ currentStep: step }),
   
   nextStep: () => set((state) => ({ 
@@ -569,54 +722,79 @@ const usePropertyFormStore = create((set, get) => ({
     currentStep: Math.max(0, state.currentStep - 1) 
   })),
   
+  // Status methods
   setSubmitting: (isSubmitting) => set({ isSubmitting }),
   
   setSubmitError: (error) => set({ submitError: error }),
   
-  resetForm: () => set({
-    mode: 'create',
-    propertyId: null,
-    title: "",
-    description: "",
-    price: "",
-    price_description: "daily",
-    custom_price_description: "",
-    currency: "USD",
-    main_image: null,
-    side_image1: null,
-    side_image2: null,
-    extra_images: [],
-    main_image_url: "",
-    side_image1_url: "",
-    side_image2_url: "",
-    extra_image_urls: [],
-    deleted_image_urls: [],
-    location: {
-      street: "",
-      apt: "",
-      city: "",
-      state: "",
-      zip: "",
-      country: "US",
-      latitude: 25.7617,
-      longitude: -80.1918
-    },
-    number_of_guests: 1,
-    number_of_bedrooms: 1,
-    number_of_beds: 1,
-    number_of_bathrooms: 1,
-    additional_info: "",
-    amenities: {},
-    currentStep: 0,
-    isSubmitting: false,
-    submitError: null,
-    imagePreviews: {
+  /**
+   * Reset the form to initial state
+   * Cleans up resources (e.g., object URLs) to prevent memory leaks
+   */
+  resetForm: () => {
+    const state = get();
+    
+    // Clean up object URLs to prevent memory leaks
+    const cleanUpUrl = (url) => {
+      if (url && typeof url === 'string' && !url.includes('://')) {
+        URL.revokeObjectURL(url);
+      }
+    };
+    
+    cleanUpUrl(state.imagePreviews.main_image);
+    cleanUpUrl(state.imagePreviews.side_image1);
+    cleanUpUrl(state.imagePreviews.side_image2);
+    
+    if (state.imagePreviews.extra_images && state.imagePreviews.extra_images.length > 0) {
+      state.imagePreviews.extra_images.forEach(url => cleanUpUrl(url));
+    }
+    
+    // Reset to initial state
+    set({
+      mode: 'create',
+      propertyId: null,
+      title: "",
+      description: "",
+      price: "",
+      price_description: "daily",
+      custom_price_description: "",
+      currency: "USD",
       main_image: null,
       side_image1: null,
       side_image2: null,
-      extra_images: []
-    }
-  })
-}))
+      extra_images: [],
+      main_image_url: "",
+      side_image1_url: "",
+      side_image2_url: "",
+      extra_image_urls: [],
+      deleted_image_urls: [],
+      location: {
+        street: "",
+        apt: "",
+        city: "",
+        state: "",
+        zip: "",
+        country: "US",
+        latitude: 25.7617,
+        longitude: -80.1918
+      },
+      number_of_guests: 1,
+      number_of_bedrooms: 1,
+      number_of_beds: 1,
+      number_of_bathrooms: 1,
+      additional_info: "",
+      amenities: {},
+      currentStep: 0,
+      isSubmitting: false,
+      submitError: null,
+      imagePreviews: {
+        main_image: null,
+        side_image1: null,
+        side_image2: null,
+        extra_images: []
+      }
+    });
+  }
+}));
 
 export default usePropertyFormStore
