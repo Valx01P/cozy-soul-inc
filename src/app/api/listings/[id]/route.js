@@ -45,7 +45,13 @@ export async function GET(request, { params }) {
           latitude, 
           longitude
         ),
-        propertyimages(id, image_url)
+        propertyimages(id, image_url),
+        admins!properties_host_id_fkey(
+          first_name,
+          last_name,
+          profile_image,
+          created_at
+        )
       `)
       .eq('id', id)
       .single()
@@ -127,7 +133,14 @@ export async function GET(request, { params }) {
       amenities,
       is_active: property.is_active,
       created_at: property.created_at,
-      updated_at: property.updated_at
+      updated_at: property.updated_at,
+      // Add host information
+      host: {
+        first_name: property.admins.first_name,
+        last_name: property.admins.last_name,
+        profile_image: property.admins.profile_image,
+        host_since: new Date(property.admins.created_at).getFullYear()
+      }
     }
     
     return NextResponse.json(formattedProperty)

@@ -13,7 +13,7 @@ export default function SiteLayout({ children }) {
     // callback, once 2000 seconds have passed, do this function
     const timer = setTimeout(() => {
       setIsInitialLoading(false)
-    }, 1000)
+    }, 200)
 
     return () => clearTimeout(timer)
   }, [])

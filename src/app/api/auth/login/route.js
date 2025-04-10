@@ -56,7 +56,8 @@ export async function POST(request) {
       first_name: admin.first_name,
       last_name: admin.last_name,
       email: admin.email,
-      username: admin.username
+      username: admin.username,
+      profile_image: admin.profile_image
     }
     
     return NextResponse.json(response, { status: 200 })

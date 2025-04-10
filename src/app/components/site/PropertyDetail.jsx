@@ -655,10 +655,28 @@ export default function PropertyDetail({ params }) {
               {/* Host Info */}
               <div className="border-t border-gray-200 pt-4 mt-4">
                 <div className="flex items-center">
-                  <div className="w-12 h-12 bg-gray-200 rounded-full mr-4"></div>
+                  <div className="w-12 h-12 overflow-hidden bg-[#FFE5EC] rounded-full mr-4 flex items-center justify-center">
+                    {property.host?.profile_image ? (
+                      <Image 
+                        src={property.host.profile_image} 
+                        alt={`Host ${property.host.first_name}`}
+                        width={48}
+                        height={48}
+                        className="object-cover w-full h-full" 
+                      />
+                    ) : (
+                      <span className="text-[#FF0056] font-medium text-lg">
+                        {property.host?.first_name?.charAt(0) || 'A'}
+                      </span>
+                    )}
+                  </div>
                   <div>
-                    <h3 className="font-medium">Hosted by Admin</h3>
-                    <p className="text-gray-600 text-sm">Host since 2023</p>
+                    <h3 className="font-medium">
+                      Hosted by {property.host?.first_name} {property.host?.last_name}
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      Host since {property.host?.host_since || '2023'}
+                    </p>
                   </div>
                 </div>
               </div>

@@ -34,7 +34,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Brand section */}
           <div className="col-span-1">
-            <Link href="/" className="inline-block mb-6 transition-transform duration-300 hover:scale-105">
+            <Link href="/" className="inline-block mb-6 transition-transform duration-300 hover:scale-105 ">
               <Image src="/svg/red-logo-full.svg" alt="Logo" width={200} height={40} className="invert" />
             </Link>
             <p className="text-gray-400 mb-6">
@@ -101,28 +101,43 @@ export default function Footer() {
         </div>
 
         {/* Contact information */}
-        <div className="border-t border-gray-800 mt-8 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-6 md:mb-0">
-              <h3 className="text-lg font-semibold mb-2 text-[var(--primary-red)]">Contact Us</h3>
-              <div className="space-y-2">
-                <p className="text-gray-400 flex items-center">
-                  <MapPin size={16} className="text-[var(--primary-red)] mr-2 flex-shrink-0" />
-                  Miami, Florida
+        <div className="border-t border-gray-800 mt-8 pt-8 md:pt-14">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+            {/* Contact info */}
+            <div className="flex flex-col items-center md:items-start mb-6 md:mb-0">
+              <h3 className="text-lg font-semibold mb-2 text-[#FF3366]">Contact Us</h3>
+              <div className="space-y-2 w-full">
+                <p className="text-gray-400 flex items-center justify-center md:justify-start">
+                  <MapPin size={16} className="text-[#FF3366] mr-2 flex-shrink-0" />
+                  <span>Miami, Florida</span>
                 </p>
-                <p className="text-gray-400 flex items-center">
-                  <Mail size={16} className="text-[var(--primary-red)] mr-2 flex-shrink-0" />
-                  Email: info@miamistays.com
+                <p className="text-gray-400 flex items-center justify-center md:justify-start">
+                  <Mail size={16} className="text-[#FF3366] mr-2 flex-shrink-0" />
+                  <span>Email: info@miamistays.com</span>
                 </p>
-                <p className="text-gray-400 flex items-center">
-                  <Phone size={16} className="text-[var(--primary-red)] mr-2 flex-shrink-0" />
-                  Phone: (305) 555-1234
+                <p className="text-gray-400 flex items-center justify-center md:justify-start">
+                  <Phone size={16} className="text-[#FF3366] mr-2 flex-shrink-0" />
+                  <span>Phone: (305) 555-1234</span>
                 </p>
               </div>
             </div>
-            <div className="text-center md:text-right">
-              <p className="text-gray-400">© {currentYear} Miami Stays. All rights reserved.</p>
-              <p className="text-gray-400 mt-1">Owner: Pablo Valdes</p>
+            
+            {/* Developer credit */}
+            <div className="flex flex-col items-center mb-6 md:mb-0">
+              <p className="text-gray-400">Website developed by</p>
+              <Image 
+                src="/svg/brand.svg" 
+                alt="Brand Logo" 
+                width={120}
+                height={60}
+                className="invert"
+              />
+            </div>
+            
+            {/* Copyright */}
+            <div className="flex flex-col items-center md:items-end">
+              <p className="text-gray-400">© {currentYear} Cozy Soul Inc. All rights reserved.</p>
+              <p className="text-gray-400 mt-1">Owner: Example</p>
             </div>
           </div>
         </div>

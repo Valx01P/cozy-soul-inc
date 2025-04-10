@@ -10,6 +10,7 @@ CREATE TABLE Admins (
   email VARCHAR(255) UNIQUE NOT NULL,
   password TEXT NOT NULL, -- unhashed, as specified
   username VARCHAR(255) UNIQUE NOT NULL,
+  profile_image VARCHAR(255),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -133,8 +134,9 @@ __* Database Seeding SQL Query *__
 
 ```sql
 -- Insert admin user
-INSERT INTO Admins (first_name, last_name, email, password, username)
-VALUES ('Pablo', 'Valdes', 'example@gmail.com', 'password123', 'Admin');
+INSERT INTO Admins (first_name, last_name, email, password, username, profile_image)
+VALUES ('Pablo', 'Valdes', 'example@gmail.com', 'password123', 'Admin', 'https://placehold.co/1024x1024/png?text=Admin');
+
 
 -- Insert amenity categories
 INSERT INTO AmenitiesCategories (name) VALUES 

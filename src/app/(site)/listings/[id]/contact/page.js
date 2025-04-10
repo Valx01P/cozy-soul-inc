@@ -207,10 +207,28 @@ export default function PropertyContactPage({ params }) {
           <div className="mt-6 pt-6 border-t border-gray-200">
             <h3 className="text-lg font-medium mb-2">About the Host</h3>
             <div className="flex items-center">
-              <div className="w-12 h-12 bg-gray-200 rounded-full mr-4"></div>
+              <div className="w-12 h-12 overflow-hidden bg-[#FFE5EC] rounded-full mr-4 flex items-center justify-center">
+                {property.host?.profile_image ? (
+                  <Image 
+                    src={property.host.profile_image} 
+                    alt={`Host ${property.host.first_name}`}
+                    width={48}
+                    height={48}
+                    className="object-cover w-full h-full" 
+                  />
+                ) : (
+                  <span className="text-[#FF0056] font-medium text-lg">
+                    {property.host?.first_name?.charAt(0) || 'A'}
+                  </span>
+                )}
+              </div>
               <div>
-                <p className="font-medium">Hosted by Admin</p>
-                <p className="text-gray-600 text-sm">Response time: Within 24 hours</p>
+                <p className="font-medium">
+                  Hosted by {property.host?.first_name} {property.host?.last_name}
+                </p>
+                <p className="text-gray-600 text-sm">
+                  Host since {property.host?.host_since || '2023'} • Response time: Within 24 hours
+                </p>
               </div>
             </div>
           </div>
