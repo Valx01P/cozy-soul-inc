@@ -3,6 +3,43 @@
 import { useEffect } from "react"
 import usePropertyFormStore from "../../../stores/propertyFormStore"
 
+// Reusable component for formatting property descriptions with proper paragraphs
+function FormattedDescription({ description }) {
+  if (!description) return null;
+  
+  // Function to properly format the description with paragraphs
+  const formatDescription = () => {
+    if (!description) return null;
+    
+    // Replace any Windows line breaks with Unix line breaks
+    const normalizedText = description.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    
+    // Split text by double newlines to get paragraphs
+    const paragraphs = normalizedText.split(/\n\s*\n/);
+    
+    return paragraphs.map((paragraph, index) => {
+      // Replace single newlines with <br /> tags within each paragraph
+      const formattedParagraph = paragraph
+        .trim()
+        .split('\n')
+        .map((line, i) => (
+          <span key={i}>
+            {line}
+            {i < paragraph.split('\n').length - 1 && <br />}
+          </span>
+        ));
+      
+      return (
+        <p key={index} className="text-gray-600 mb-3">
+          {formattedParagraph}
+        </p>
+      );
+    });
+  };
+  
+  return <>{formatDescription()}</>;
+}
+
 export function ConfirmSubmitStep() {
   // Get all data from the store
   const {
@@ -20,6 +57,7 @@ export function ConfirmSubmitStep() {
     number_of_guests,
     number_of_bedrooms,
     number_of_beds,
+    number_of_bathrooms,
     additional_info,
     amenities,
     imagePreviews
@@ -63,7 +101,8 @@ export function ConfirmSubmitStep() {
         <div className="bg-gray-50 rounded-xl p-6">
           <div className="mb-4">
             <h4 className="font-medium text-lg">{title}</h4>
-            <p className="text-gray-600">{description}</p>
+            {/* Use our formatted description component instead of a plain paragraph */}
+            <FormattedDescription description={description} />
           </div>
           
           <div className="flex items-center text-lg font-semibold text-[var(--primary-red)]">
@@ -179,7 +218,8 @@ export function ConfirmSubmitStep() {
           {additional_info && (
             <div>
               <p className="text-gray-500 text-sm mb-1">House Rules & Additional Information</p>
-              <p>{additional_info}</p>
+              {/* Format the additional info with proper line breaks too */}
+              <FormattedDescription description={additional_info} />
             </div>
           )}
         </div>

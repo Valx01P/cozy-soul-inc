@@ -6,6 +6,65 @@ import Link from "next/link"
 import { ChevronLeft, Home, Users, Bed, Bath, MapPin, MessageCircle, Camera, ChevronRight, ImageIcon } from "lucide-react"
 import { use } from "react"
 
+// This component properly formats property descriptions
+function PropertyDescription({ description, maxLines = 5 }) {
+  const [expanded, setExpanded] = useState(false);
+  
+  if (!description) return null;
+  
+  // Function to properly format the description with paragraphs
+  const formatDescription = () => {
+    if (!description) return null;
+    
+    // Replace any Windows line breaks with Unix line breaks
+    const normalizedText = description.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    
+    // Split text by double newlines to get paragraphs
+    const paragraphs = normalizedText.split(/\n\s*\n/);
+    
+    // If not expanded, limit to first paragraph or first few lines
+    const visibleParagraphs = expanded ? paragraphs : [paragraphs[0]];
+    
+    return visibleParagraphs.map((paragraph, index) => {
+      // Replace single newlines with <br /> tags within each paragraph
+      const formattedParagraph = paragraph
+        .trim()
+        .split('\n')
+        .map((line, i) => (
+          <span key={i}>
+            {line}
+            {i < paragraph.split('\n').length - 1 && <br />}
+          </span>
+        ));
+      
+      return (
+        <p key={index} className="text-gray-700 mb-4">
+          {formattedParagraph}
+        </p>
+      );
+    });
+  };
+  
+  const hasMoreContent = description.split(/\n\s*\n/).length > 1;
+  
+  return (
+    <div>
+      <div className={!expanded ? "line-clamp-5" : ""}>
+        {formatDescription()}
+      </div>
+      
+      {hasMoreContent && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="text-[var(--primary-red)] font-medium hover:underline focus:outline-none mt-1"
+        >
+          {expanded ? "Show less" : "Read more..."}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function PropertyDetail({ params }) {
   // Properly unwrap params using React.use()
   const resolvedParams = use(params)
@@ -509,7 +568,8 @@ export default function PropertyDetail({ params }) {
             <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
               <div className="border-b border-gray-200 pb-6 mb-6">
                 <h2 className="text-xl font-semibold mb-4">About this place</h2>
-                <p className="text-gray-700 whitespace-pre-line">{property.description}</p>
+                {/* Replace the old description with our new component */}
+                <PropertyDescription description={property.description} />
               </div>
               
               <div className="flex flex-wrap gap-6 mb-6">
@@ -545,7 +605,7 @@ export default function PropertyDetail({ params }) {
               {property.additional_info && (
                 <div className="mb-6">
                   <h3 className="text-lg font-medium mb-2">Additional Info</h3>
-                  <p className="text-gray-700">{property.additional_info}</p>
+                  <PropertyDescription description={property.additional_info} />
                 </div>
               )}
             </div>
