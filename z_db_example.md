@@ -214,93 +214,93 @@ INSERT INTO Amenities (category_id, name, svg) VALUES
 -- Internet and office
 INSERT INTO Amenities (category_id, name, svg) VALUES
 (8,'Wifi','<svg></svg>'), -- 51
-(8,'Dedicated workspace','<svg></svg>'), -- 51
+(8,'Dedicated workspace','<svg></svg>'), -- 52
 
 -- Kitchen and dining
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(9,'Refrigerator','<svg></svg>'), -- 52
-(9,'Microwave','<svg></svg>'), -- 53
-(9,'Dishes and silverware','<svg></svg>'), -- 54
-(9,'Coffee maker','<svg></svg>'), -- 55
-(9,'Kitchen','<svg></svg>'), -- 56
-(9,'Cooking basics','<svg></svg>'), -- 57
-(9,'Mini fridge','<svg></svg>'), -- 58
-(9,'Freezer','<svg></svg>'), -- 59
-(9,'Dishwasher','<svg></svg>'), -- 60
-(9,'Induction stove','<svg></svg>'), -- 61
-(9,'Stainless steel oven','<svg></svg>'), -- 62
-(9,'Stainless steel electric stove','<svg></svg>'), -- 63
-(9,'Rice maker','<svg></svg>'), -- 64
-(9,'Blender','<svg></svg>'), -- 65
-(9,'Baking sheet','<svg></svg>'), -- 66
-(9,'Hot water kettle','<svg></svg>'), -- 67
-(9,'Coffee maker','<svg></svg>'), -- 68
-(9,'Wine glasses','<svg></svg>'), -- 69
-(9,'Toaster','<svg></svg>'), -- 70
-(9,'Dining table','<svg></svg>'), -- 71
-(9,'Coffee','<svg></svg>'), -- 72
+(9,'Refrigerator','<svg></svg>'), -- 53
+(9,'Microwave','<svg></svg>'), -- 54
+(9,'Dishes and silverware','<svg></svg>'), -- 55
+(9,'Coffee maker','<svg></svg>'), -- 56
+(9,'Kitchen','<svg></svg>'), -- 57
+(9,'Cooking basics','<svg></svg>'), -- 58
+(9,'Mini fridge','<svg></svg>'), -- 59
+(9,'Freezer','<svg></svg>'), -- 60
+(9,'Dishwasher','<svg></svg>'), -- 61
+(9,'Induction stove','<svg></svg>'), -- 62
+(9,'Stainless steel oven','<svg></svg>'), -- 63
+(9,'Stainless steel electric stove','<svg></svg>'), -- 64
+(9,'Rice maker','<svg></svg>'), -- 65
+(9,'Blender','<svg></svg>'), -- 66
+(9,'Baking sheet','<svg></svg>'), -- 67
+(9,'Hot water kettle','<svg></svg>'), -- 68
+(9,'Stove','<svg></svg>'), -- 69
+(9,'Wine glasses','<svg></svg>'), -- 70
+(9,'Toaster','<svg></svg>'), -- 71
+(9,'Dining table','<svg></svg>'), -- 72
+(9,'Oven','<svg></svg>'), -- 73
 
 -- Location features
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(10,'Beach access - Beachfront','<svg></svg>'), -- 73
-(10,'Private entrance','<svg></svg>'), -- 74
-(10,'Waterfront','<svg></svg>'), -- 75
-(10,'Free resort access','<svg></svg>'), -- 76
+(10,'Beach access - Beachfront','<svg></svg>'), -- 74
+(10,'Private entrance','<svg></svg>'), -- 75
+(10,'Waterfront','<svg></svg>'), -- 76
+(10,'Free resort access','<svg></svg>'), -- 77
 
 -- Outdoor
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(11,'Private backyard - Fully fenced','<svg></svg>'), -- 77
-(11,'Outdoor furniture','<svg></svg>'), -- 78
-(11,'Outdoor dining area','<svg></svg>'), -- 79
-(11,'Patio or balcony','<svg></svg>'), -- 80
-(11,'Backyard','<svg></svg>'), -- 81
-(11,'Beach essentials','<svg></svg>'), -- 82
-(11,'Shared backyard - Fully fenced','<svg></svg>'), -- 83
-(11,'Sun loungers','<svg></svg>'), -- 84
+(11,'Private backyard - Fully fenced','<svg></svg>'), -- 78
+(11,'Outdoor furniture','<svg></svg>'), -- 79
+(11,'Outdoor dining area','<svg></svg>'), -- 80
+(11,'Patio or balcony','<svg></svg>'), -- 81
+(11,'Backyard','<svg></svg>'), -- 82
+(11,'Beach essentials','<svg></svg>'), -- 83
+(11,'Shared backyard - Fully fenced','<svg></svg>'), -- 84
+(11,'Sun loungers','<svg></svg>'), -- 85
 
 -- Parking and facilities
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(12,'Free parking on premises','<svg></svg>'), -- 85
-(12,'Pool','<svg></svg>'), -- 86
-(12,'Gym','<svg></svg>'), -- 87
-(12,'Free street parking','<svg></svg>'), -- 88
-(12,'Private living room','<svg></svg>'), -- 89
-(12,'Shared outdoor pool - available all year, open 24 hours','<svg></svg>'), -- 90
-(12,'Paid parking off premises','<svg></svg>'), -- 91
-(12,'Paid parking on premises','<svg></svg>'), -- 92
-(12,'Elevator','<svg></svg>'), -- 93
-(12,'Shared hot tub','<svg></svg>'), -- 94
-(12,'Shared gym in building','<svg></svg>'), -- 95
+(12,'Free parking on premises','<svg></svg>'), -- 86
+(12,'Pool','<svg></svg>'), -- 87
+(12,'Gym','<svg></svg>'), -- 88
+(12,'Free street parking','<svg></svg>'), -- 89
+(12,'Private living room','<svg></svg>'), -- 90
+(12,'Shared outdoor pool - available all year, open 24 hours','<svg></svg>'), -- 91
+(12,'Paid parking off premises','<svg></svg>'), -- 92
+(12,'Paid parking on premises','<svg></svg>'), -- 93
+(12,'Elevator','<svg></svg>'), -- 94
+(12,'Shared hot tub','<svg></svg>'), -- 95
+(12,'Shared gym in building','<svg></svg>'), -- 96
 
 -- Services
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(13,'Self check-in','<svg></svg>'), -- 96
-(13,'Building staff','<svg></svg>'), -- 97
-(13,'Smart lock','<svg></svg>'), -- 98
-(13,'Luggage dropoff allowed','<svg></svg>'), -- 99
-(13,'Breakfast','<svg></svg>'), -- 100
-(13,'Smoking allowed','<svg></svg>'), -- 101
-(13,'Long term stays allowed','<svg></svg>'), -- 102
-(13,'Cleaning available during stay','<svg></svg>'), -- 103
-(13,'Host greets you','<svg></svg>'), -- 104
-(13,'Keypad','<svg></svg>'), -- 105
-(13,'Lockbox','<svg></svg>'), -- 106
-(13,'Housekeeping - available at extra cost','<svg></svg>'), -- 107
+(13,'Self check-in','<svg></svg>'), -- 97
+(13,'Building staff','<svg></svg>'), -- 98
+(13,'Smart lock','<svg></svg>'), -- 99
+(13,'Luggage dropoff allowed','<svg></svg>'), -- 100
+(13,'Breakfast','<svg></svg>'), -- 101
+(13,'Smoking allowed','<svg></svg>'), -- 102
+(13,'Long term stays allowed','<svg></svg>'), -- 103
+(13,'Cleaning available during stay','<svg></svg>'), -- 104
+(13,'Host greets you','<svg></svg>'), -- 105
+(13,'Keypad','<svg></svg>'), -- 106
+(13,'Lockbox','<svg></svg>'), -- 107
+(13,'Housekeeping - available at extra cost','<svg></svg>'), -- 108
 
 -- Not included
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(14,'Exterior security cameras on property','<svg></svg>'), -- 108
-(14,'Kitchen','<svg></svg>'), -- 109
-(14,'Heating','<svg></svg>'), -- 110
-(14,'Wifi','<svg></svg>'), -- 111
-(14,'TV','<svg></svg>'), -- 112
-(14,'Washer','<svg></svg>'), -- 113
-(14,'Hair dryer','<svg></svg>'), -- 114
-(14,'Smoke alarm','<svg></svg>'), -- 115
-(14,'Carbon monoxide alarm','<svg></svg>'), -- 116
-(14,'Shampoo','<svg></svg>'), -- 117
-(14,'Private entrance','<svg></svg>'), -- 118
-(14,'Essentials','<svg></svg>'); -- 119
+(14,'Exterior security cameras on property','<svg></svg>'), -- 109
+(14,'Kitchen','<svg></svg>'), -- 110
+(14,'Heating','<svg></svg>'), -- 111
+(14,'Wifi','<svg></svg>'), -- 112
+(14,'TV','<svg></svg>'), -- 113
+(14,'Washer','<svg></svg>'), -- 114
+(14,'Hair dryer','<svg></svg>'), -- 115
+(14,'Smoke alarm','<svg></svg>'), -- 116
+(14,'Carbon monoxide alarm','<svg></svg>'), -- 117
+(14,'Shampoo','<svg></svg>'), -- 118
+(14,'Private entrance','<svg></svg>'), -- 119
+(14,'Essentials','<svg></svg>'); -- 120
 
 -- Insert sample locations
 INSERT INTO Locations (address, street, apt, city, state, zip, country, latitude, longitude) VALUES
