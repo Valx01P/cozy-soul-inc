@@ -106,26 +106,6 @@ DROP TABLE IF EXISTS Admins CASCADE;
 DROP FUNCTION IF EXISTS update_timestamp() CASCADE;
 ```
 
-__* Clear Database *__
-```sql
--- Temporarily disable triggers to avoid foreign key constraint issues
-SET session_replication_role = 'replica';
-
--- Truncate all tables (in order of dependencies)
-TRUNCATE TABLE PropertyAmenities;
-TRUNCATE TABLE PropertyImages;
-TRUNCATE TABLE Properties;
-TRUNCATE TABLE Amenities;
-TRUNCATE TABLE Locations;
-TRUNCATE TABLE AmenitiesCategories;
-TRUNCATE TABLE Admins;
-
--- Re-enable triggers
-SET session_replication_role = 'origin';
-```
-
-
-
 
 
 
@@ -165,152 +145,162 @@ INSERT INTO Amenities (category_id, name, svg) VALUES
 (1,'Garden view','<svg></svg>'), -- 2
 (1,'Mountain view','<svg></svg>'), -- 3
 (1,'Ocean view','<svg></svg>'), -- 4
+(1,'City view', '<svg></svg>'), -- 5
 
 
 -- Bathroom
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(2,'Hair dryer','<svg></svg>'), -- 5
-(2,'Shampoo','<svg></svg>'), -- 6
-(2,'Hot water','<svg></svg>'), -- 7
-(2,'Shower gel','<svg></svg>'), -- 8
-(2,'Bathtub','<svg></svg>'), -- 9
-(2,'Conditioner','<svg></svg>'), -- 10
-(2,'Body soap','<svg></svg>'), -- 11
-(2,'Bidet','<svg></svg>'), -- 12
-(2,'Cleaning products','<svg></svg>'), -- 13
+(2,'Hair dryer','<svg></svg>'), -- 6
+(2,'Shampoo','<svg></svg>'), -- 7
+(2,'Hot water','<svg></svg>'), -- 8
+(2,'Shower gel','<svg></svg>'), -- 9
+(2,'Bathtub','<svg></svg>'), -- 10
+(2,'Conditioner','<svg></svg>'), -- 11
+(2,'Body soap','<svg></svg>'), -- 12
+(2,'Bidet','<svg></svg>'), -- 13
+(2,'Cleaning products','<svg></svg>'), -- 14
 
 -- Bedroom and laundry
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(3,'Washer','<svg></svg>'), -- 14
-(3,'Dryer','<svg></svg>'), -- 15
-(3,'Essentials','<svg></svg>'), -- 16
-(3,'Hangers','<svg></svg>'), -- 17
-(3,'Bed linens','<svg></svg>'), -- 18
-(3,'Extra pillows and blankets','<svg></svg>'), -- 19
-(3,'Iron','<svg></svg>'), -- 20
-(3,'Room-darkening shades','<svg></svg>'), -- 21
-(3,'Safe','<svg></svg>'), -- 22
-(3,'Hair dryer','<svg></svg>'), -- 23
-(3,'Clothing storage','<svg></svg>'), -- 24
+(3,'Washer','<svg></svg>'), -- 15
+(3,'Dryer','<svg></svg>'), -- 16
+(3,'Essentials','<svg></svg>'), -- 17
+(3,'Hangers','<svg></svg>'), -- 18
+(3,'Bed linens','<svg></svg>'), -- 19
+(3,'Extra pillows and blankets','<svg></svg>'), -- 20
+(3,'Iron','<svg></svg>'), -- 21
+(3,'Room-darkening shades','<svg></svg>'), -- 22
+(3,'Safe','<svg></svg>'), -- 23
+(3,'Hair dryer','<svg></svg>'), -- 24
+(3,'Clothing storage','<svg></svg>'), -- 25
 
 -- Entertainment
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(4,'TV with Standard cable','<svg></svg>'), -- 25
-(4,'Record player','<svg></svg>'), -- 26
-(4,'Books and reading material','<svg></svg>'), -- 27
-(4,'Bluetooth sound system','<svg></svg>'), -- 28
-(4,'Ethernet connection','<svg></svg>'), -- 29
-(4,'HDTV with standard cable, premium cable','<svg></svg>'), -- 30
-(4,'TV','<svg></svg>'), -- 31
+(4,'TV with Standard cable','<svg></svg>'), -- 26
+(4,'Record player','<svg></svg>'), -- 27
+(4,'Exercise equipment','<svg></svg>'), -- 28
+(4,'Books and reading material','<svg></svg>'), -- 29
+(4,'Bluetooth sound system','<svg></svg>'), -- 30
+(4,'Ethernet connection','<svg></svg>'), -- 31
+(4,'HDTV with standard cable, premium cable','<svg></svg>'), -- 32
+(4,'TV','<svg></svg>'), -- 33
 
 -- Family
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(5,'Window guards','<svg></svg>'), -- 32
-(5,'Babysitter recommendations','<svg></svg>'), -- 33
+(5,'Window guards','<svg></svg>'), -- 34
+(5,'Babysitter recommendations','<svg></svg>'), -- 35
+(5,'Pack ’n play/Travel crib','<svg></svg>'), -- 36
+(5,'Standalone high chair','<svg></svg>'), -- 37
 
 -- Heating and cooling
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(6,'Air conditioning','<svg></svg>'), -- 34
-(6,'Portable air conditioning','<svg></svg>'), -- 35
-(6,'Indoor fireplace: electric','<svg></svg>'), -- 36
-(6,'Heating','<svg></svg>'), -- 37
-(6,'Ceiling fan','<svg></svg>'), -- 38
-(6,'AC - split type ductless system','<svg></svg>'), -- 39
-(6,'Central air conditioning','<svg></svg>'), -- 40
-(6,'Central heating','<svg></svg>'), -- 41
+(6,'Air conditioning','<svg></svg>'), -- 38
+(6,'Portable air conditioning','<svg></svg>'), -- 39
+(6,'Indoor fireplace: electric','<svg></svg>'), -- 40
+(6,'Heating','<svg></svg>'), -- 41
+(6,'Ceiling fan','<svg></svg>'), -- 42
+(6,'AC - split type ductless system','<svg></svg>'), -- 43
+(6,'Central air conditioning','<svg></svg>'), -- 44
+(6,'Central heating','<svg></svg>'), -- 45
 
 -- Home safety
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(7,'Smoke alarm','<svg></svg>'), -- 42
-(7,'Carbon monoxide alarm','<svg></svg>'), -- 43
-(7,'Fire extinguisher','<svg></svg>'), -- 44
-(7,'First aid kit','<svg></svg>'), -- 45
-(7,'Exterior security cameras on property','<svg></svg>'), -- 46
+(7,'Smoke alarm','<svg></svg>'), -- 46
+(7,'Carbon monoxide alarm','<svg></svg>'), -- 47
+(7,'Fire extinguisher','<svg></svg>'), -- 48
+(7,'First aid kit','<svg></svg>'), -- 49
+(7,'Exterior security cameras on property','<svg></svg>'), -- 50
 
 -- Internet and office
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(8,'Wifi','<svg></svg>'), -- 47
-(8,'Dedicated workspace','<svg></svg>'), -- 48
+(8,'Wifi','<svg></svg>'), -- 51
+(8,'Dedicated workspace','<svg></svg>'), -- 51
 
 -- Kitchen and dining
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(9,'Refrigerator','<svg></svg>'), -- 49
-(9,'Microwave','<svg></svg>'), -- 50
-(9,'Dishes and silverware','<svg></svg>'), -- 51
-(9,'Coffee maker','<svg></svg>'), -- 52
-(9,'Kitchen','<svg></svg>'), -- 53
-(9,'Cooking basics','<svg></svg>'), -- 54
-(9,'Mini fridge','<svg></svg>'), -- 55
-(9,'Freezer','<svg></svg>'), -- 56
-(9,'Dishwasher','<svg></svg>'), -- 57
-(9,'Induction stove','<svg></svg>'), -- 58
-(9,'Stainless steel oven','<svg></svg>'), -- 59
-(9,'Hot water kettle','<svg></svg>'), -- 60
-(9,'Coffee maker','<svg></svg>'), -- 61
-(9,'Wine glasses','<svg></svg>'), -- 62
-(9,'Toaster','<svg></svg>'), -- 63
-(9,'Dining table','<svg></svg>'), -- 64
-(9,'Coffee','<svg></svg>'), -- 65
+(9,'Refrigerator','<svg></svg>'), -- 52
+(9,'Microwave','<svg></svg>'), -- 53
+(9,'Dishes and silverware','<svg></svg>'), -- 54
+(9,'Coffee maker','<svg></svg>'), -- 55
+(9,'Kitchen','<svg></svg>'), -- 56
+(9,'Cooking basics','<svg></svg>'), -- 57
+(9,'Mini fridge','<svg></svg>'), -- 58
+(9,'Freezer','<svg></svg>'), -- 59
+(9,'Dishwasher','<svg></svg>'), -- 60
+(9,'Induction stove','<svg></svg>'), -- 61
+(9,'Stainless steel oven','<svg></svg>'), -- 62
+(9,'Stainless steel electric stove','<svg></svg>'), -- 63
+(9,'Rice maker','<svg></svg>'), -- 64
+(9,'Blender','<svg></svg>'), -- 65
+(9,'Baking sheet','<svg></svg>'), -- 66
+(9,'Hot water kettle','<svg></svg>'), -- 67
+(9,'Coffee maker','<svg></svg>'), -- 68
+(9,'Wine glasses','<svg></svg>'), -- 69
+(9,'Toaster','<svg></svg>'), -- 70
+(9,'Dining table','<svg></svg>'), -- 71
+(9,'Coffee','<svg></svg>'), -- 72
 
 -- Location features
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(10,'Beach access - Beachfront','<svg></svg>'), -- 66
-(10,'Private entrance','<svg></svg>'), -- 67
-(10,'Waterfront','<svg></svg>'), -- 68
-(10,'Free resort access','<svg></svg>'), -- 69
+(10,'Beach access - Beachfront','<svg></svg>'), -- 73
+(10,'Private entrance','<svg></svg>'), -- 74
+(10,'Waterfront','<svg></svg>'), -- 75
+(10,'Free resort access','<svg></svg>'), -- 76
 
 -- Outdoor
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(11,'Private backyard - Fully fenced','<svg></svg>'), -- 70
-(11,'Outdoor furniture','<svg></svg>'), -- 71
-(11,'Outdoor dining area','<svg></svg>'), -- 72
-(11,'Patio or balcony','<svg></svg>'), -- 73
-(11,'Backyard','<svg></svg>'), -- 74
-(11,'Beach essentials','<svg></svg>'), -- 75
-(11,'Shared backyard - Fully fenced','<svg></svg>'), -- 76
-(11,'Sun loungers','<svg></svg>'), -- 77
+(11,'Private backyard - Fully fenced','<svg></svg>'), -- 77
+(11,'Outdoor furniture','<svg></svg>'), -- 78
+(11,'Outdoor dining area','<svg></svg>'), -- 79
+(11,'Patio or balcony','<svg></svg>'), -- 80
+(11,'Backyard','<svg></svg>'), -- 81
+(11,'Beach essentials','<svg></svg>'), -- 82
+(11,'Shared backyard - Fully fenced','<svg></svg>'), -- 83
+(11,'Sun loungers','<svg></svg>'), -- 84
 
 -- Parking and facilities
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(12,'Free parking on premises','<svg></svg>'), -- 78
-(12,'Pool','<svg></svg>'), -- 79
-(12,'Gym','<svg></svg>'), -- 80
-(12,'Free street parking','<svg></svg>'), -- 81
-(12,'Private living room','<svg></svg>'), -- 82
-(12,'Shared outdoor pool - available all year, open 24 hours','<svg></svg>'), -- 83
-(12,'Paid parking off premises','<svg></svg>'), -- 84
-(12,'Paid parking on premises','<svg></svg>'), -- 85
-(12,'Elevator','<svg></svg>'), -- 86
+(12,'Free parking on premises','<svg></svg>'), -- 85
+(12,'Pool','<svg></svg>'), -- 86
+(12,'Gym','<svg></svg>'), -- 87
+(12,'Free street parking','<svg></svg>'), -- 88
+(12,'Private living room','<svg></svg>'), -- 89
+(12,'Shared outdoor pool - available all year, open 24 hours','<svg></svg>'), -- 90
+(12,'Paid parking off premises','<svg></svg>'), -- 91
+(12,'Paid parking on premises','<svg></svg>'), -- 92
+(12,'Elevator','<svg></svg>'), -- 93
+(12,'Shared hot tub','<svg></svg>'), -- 94
+(12,'Shared gym in building','<svg></svg>'), -- 95
 
 -- Services
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(13,'Self check-in','<svg></svg>'), -- 87
-(13,'Building staff','<svg></svg>'), -- 88
-(13,'Smart lock','<svg></svg>'), -- 89
-(13,'Luggage dropoff allowed','<svg></svg>'), -- 90
-(13,'Breakfast','<svg></svg>'), -- 91
-(13,'Smoking allowed','<svg></svg>'), -- 92
-(13,'Long term stays allowed','<svg></svg>'), -- 93
-(13,'Cleaning available during stay','<svg></svg>'), -- 94
-(13,'Host greets you','<svg></svg>'), -- 95
-(13,'Keypad','<svg></svg>'), -- 96
-(13,'Lockbox','<svg></svg>'), -- 97
-(13,'Housekeeping - available at extra cost','<svg></svg>'), -- 98
+(13,'Self check-in','<svg></svg>'), -- 96
+(13,'Building staff','<svg></svg>'), -- 97
+(13,'Smart lock','<svg></svg>'), -- 98
+(13,'Luggage dropoff allowed','<svg></svg>'), -- 99
+(13,'Breakfast','<svg></svg>'), -- 100
+(13,'Smoking allowed','<svg></svg>'), -- 101
+(13,'Long term stays allowed','<svg></svg>'), -- 102
+(13,'Cleaning available during stay','<svg></svg>'), -- 103
+(13,'Host greets you','<svg></svg>'), -- 104
+(13,'Keypad','<svg></svg>'), -- 105
+(13,'Lockbox','<svg></svg>'), -- 106
+(13,'Housekeeping - available at extra cost','<svg></svg>'), -- 107
 
 -- Not included
 INSERT INTO Amenities (category_id, name, svg) VALUES
-(14,'Exterior security cameras on property','<svg></svg>'), -- 99
-(14,'Kitchen','<svg></svg>'), -- 100
-(14,'Heating','<svg></svg>'), -- 101
-(14,'Wifi','<svg></svg>'), -- 102
-(14,'TV','<svg></svg>'), -- 103
-(14,'Washer','<svg></svg>'), -- 104
-(14,'Hair dryer','<svg></svg>'), -- 105
-(14,'Smoke alarm','<svg></svg>'), -- 106
-(14,'Carbon monoxide alarm','<svg></svg>'), -- 107
-(14,'Shampoo','<svg></svg>'), -- 108
-(14,'Private entrance','<svg></svg>'), -- 109
-(14,'Essentials','<svg></svg>'); -- 110
+(14,'Exterior security cameras on property','<svg></svg>'), -- 108
+(14,'Kitchen','<svg></svg>'), -- 109
+(14,'Heating','<svg></svg>'), -- 110
+(14,'Wifi','<svg></svg>'), -- 111
+(14,'TV','<svg></svg>'), -- 112
+(14,'Washer','<svg></svg>'), -- 113
+(14,'Hair dryer','<svg></svg>'), -- 114
+(14,'Smoke alarm','<svg></svg>'), -- 115
+(14,'Carbon monoxide alarm','<svg></svg>'), -- 116
+(14,'Shampoo','<svg></svg>'), -- 117
+(14,'Private entrance','<svg></svg>'), -- 118
+(14,'Essentials','<svg></svg>'); -- 119
 
 -- Insert sample locations
 INSERT INTO Locations (address, street, apt, city, state, zip, country, latitude, longitude) VALUES

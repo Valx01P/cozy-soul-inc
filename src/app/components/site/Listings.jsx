@@ -115,14 +115,14 @@ export default function Listings() {
         
         // Filter based on amenities
         const hasBeachView = property.amenities["Scenic Views"]?.some(item => item.name === "Beach view")
-        const hasGardenView = property.amenities["Scenic Views"]?.some(item => item.name === "Garden view") 
+        const hasCityView = property.amenities["Scenic Views"]?.some(item => item.name === "City view") 
         const hasOceanView = property.amenities["Scenic Views"]?.some(item => item.name === "Ocean view")
         
         switch(filter) {
           case 'beach':
             return hasBeachView
-          case 'garden':
-            return hasGardenView
+          case 'city':
+            return hasCityView
           case 'ocean':
             return hasOceanView
           case 'luxury':
@@ -376,14 +376,14 @@ export default function Listings() {
                     </button>
                     <button 
                       type="button"
-                      onClick={() => setFilter('garden')}
+                      onClick={() => setFilter('city')}
                       className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                        filter === 'garden' 
+                        filter === 'city' 
                           ? 'bg-[var(--primary-red)] text-white' 
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
-                      Garden View
+                      City View
                     </button>
                   </div>
                 </div>

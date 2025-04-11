@@ -64,10 +64,10 @@ export function DetailsFormStep() {
 
   // Handle amenity selection/deselection
   const handleAmenityChange = (category, amenityName) => {
-    console.log(`Selecting amenity: ${category} - ${amenityName}`)
+    console.log(`Toggling amenity: ${category} - ${amenityName}`)
     
-    // Set the amenity to true (selected)
-    updateAmenity(category, amenityName, true)
+    // Don't provide a value to toggle the amenity
+    updateAmenity(category, amenityName)
     
     // Log the current amenities state after update for debugging
     setTimeout(() => {
