@@ -11,10 +11,49 @@ export default function Navbar() {
   const [activeResultIndex, setActiveResultIndex] = useState(0)
   const searchInputRef = useRef(null)
   
-  // Toggle mobile menu
+  // Toggle mobile menu - simple implementation
   const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen)
+    setIsMenuOpen(prev => !prev)
+    console.log("Menu toggled:", !isMenuOpen) // Debug log
   }
+  
+  // Close menu function
+  const closeMenu = () => {
+    setIsMenuOpen(false)
+  }
+  
+  // Effect to manage document body overflow and cleanup
+  useEffect(() => {
+    // Ensure menu state is reset on page load
+    const handleRouteChange = () => {
+      setIsMenuOpen(false)
+    }
+    
+    // Close menu on ESC key
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape') {
+        setIsMenuOpen(false)
+      }
+    }
+    
+    // Add/remove body scroll lock
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    
+    // Add event listeners
+    document.addEventListener('keydown', handleEscKey)
+    window.addEventListener('popstate', handleRouteChange)
+    
+    // Clean up
+    return () => {
+      document.body.style.overflow = ''
+      document.removeEventListener('keydown', handleEscKey)
+      window.removeEventListener('popstate', handleRouteChange)
+    }
+  }, [isMenuOpen])
 
   // Clear all search highlights
   const clearSearchHighlights = () => {
@@ -295,34 +334,63 @@ export default function Navbar() {
 
           {/* mobile navigation - hamburger menu */}
           <div className='cmd2:hidden flex justify-end items-center'>
-            {!isMenuOpen ? (
-              <button onClick={() => toggleMenu()} className='hover:cursor-pointer'>
+            <button 
+              type="button"
+              onClick={toggleMenu} 
+              className='hover:cursor-pointer p-2'
+              aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+            >
+              {!isMenuOpen ? (
                 <HamburgerMenu size={42} strokeWidth={3.5} color='var(--primary-red)'/>
-              </button>
-            ) : (
-              <button onClick={() => toggleMenu()} className='hover:cursor-pointer'>
+              ) : (
                 <XIcon size={42} strokeWidth={3.5} color='var(--primary-red)'/>
-              </button>
-            )}
+              )}
+            </button>
           </div>
 
           {/* Overlay that blurs everything */}
-          {isMenuOpen && <div className='fixed inset-0 bg-black/30 backdrop-blur-sm z-40 transition-opacity duration-300' onClick={() => toggleMenu()}/>}
+          {isMenuOpen && (
+            <div 
+              className='fixed inset-0 bg-black/30 backdrop-blur-sm z-40 transition-opacity duration-300' 
+              onClick={closeMenu}
+            />
+          )}
           
-          {/* Sidebar menu */}
-          <div className={`fixed top-0 left-0 h-full w-72 bg-white shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          {/* Sidebar menu - simplified structure */}
+          <div 
+            className={`fixed top-0 left-0 h-full w-72 bg-white shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
+          >
             <div className="p-5 flex flex-col h-full">
               <div className="flex justify-end mb-6">
-                <button onClick={toggleMenu} className="hover:cursor-pointer">
+                <button 
+                  type="button"
+                  onClick={closeMenu} 
+                  className="hover:cursor-pointer p-2"
+                >
                   <XIcon size={32} strokeWidth={3} color='var(--primary-red)'/>
                 </button>
               </div>
               
               <div className="flex flex-col gap-6">
-                <Link href="/about" className='text-xl font-medium hover:text-[var(--primary-red)] transition-colors duration-300' onClick={toggleMenu}>
+                <Link 
+                  href="/" 
+                  className='text-xl font-medium hover:text-[var(--primary-red)] transition-colors duration-300' 
+                  onClick={closeMenu}
+                >
+                  Home
+                </Link>
+                <Link 
+                  href="/about" 
+                  className='text-xl font-medium hover:text-[var(--primary-red)] transition-colors duration-300' 
+                  onClick={closeMenu}
+                >
                   About
                 </Link>
-                <Link href="/contact" className='text-xl font-medium hover:text-[var(--primary-red)] transition-colors duration-300' onClick={toggleMenu}>
+                <Link 
+                  href="/contact" 
+                  className='text-xl font-medium hover:text-[var(--primary-red)] transition-colors duration-300' 
+                  onClick={closeMenu}
+                >
                   Contact
                 </Link>
                 
