@@ -12,8 +12,29 @@ For our Next.js app, we want an API sort of like this
   /amenities        -GET
   /listings         -GET -POST
     /[id]           -GET -PUT -DELETE
-
-Project Stack:
+  /users
+    /register
+    /profile
+  /reservations
+    /[id]
+      /approve
+      /reject
+      /cancel
+  /payment-plans
+    /[id]
+  /payments
+    /create-checkout
+    /installments
+    /[id]
+      /pay
+  /deposits
+    /authorize
+    /capture
+    /release
+  /webhooks
+    /stripe
+  
+  Project Stack:
   Next.js with App router, TailwindCSS 4.0, Resend for email sending,
   Supabase for the database, Supabase storage for images, Next.js
   API routes for our API, Access and Refresh token JWT Auth, NOT USING
