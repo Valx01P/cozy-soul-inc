@@ -84,8 +84,102 @@ CREATE TABLE PropertyAmenities (
   FOREIGN KEY (property_id) REFERENCES Properties(id) ON DELETE CASCADE,
   FOREIGN KEY (amenity_id) REFERENCES Amenities(id) ON DELETE CASCADE
 );
-```
 
+-- Payment Integration Update 4/13/2025
+
+-- Table for regular users (not admins)
+CREATE TABLE Users (
+  id SERIAL PRIMARY KEY,
+  first_name VARCHAR(255) NOT NULL,
+  last_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  google_id VARCHAR(255) UNIQUE,
+  password TEXT,
+  email_verified BOOLEAN DEFAULT FALSE,
+  phone VARCHAR(20),
+  profile_image VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+);
+
+-- Table for property availability (calendars)
+CREATE TABLE PropertyAvailability (
+  id SERIAL PRIMARY KEY,
+  property_id INTEGER NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  is_available BOOLEAN NOT NULL DEFAULT TRUE,
+  price DECIMAL(10, 2) NOT NULL,
+  availability_type VARCHAR(50) NOT NULL DEFAULT 'default', -- 'default', 'booked', 'blocked'
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (property_id) REFERENCES Properties(id) ON DELETE CASCADE
+);
+
+
+-- Table for reservations
+CREATE TABLE Reservations (
+  id SERIAL PRIMARY KEY,
+  property_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  check_in_date DATE NOT NULL,
+  check_out_date DATE NOT NULL,
+  guests_count INTEGER NOT NULL,
+  total_price DECIMAL(10, 2) NOT NULL,
+  total_installments INTEGER,
+  current_installment INTEGER DEFAULT 0,
+  next_payment_date DATE,
+  status VARCHAR(50) NOT NULL DEFAULT 'pending', -- pending, approved, rejected, cancelled, completed
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (property_id) REFERENCES Properties(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
+);
+
+-- Table for installments (future payments)
+CREATE TABLE Installments (
+  id SERIAL PRIMARY KEY,
+  reservation_id INTEGER NOT NULL,
+  amount DECIMAL(10, 2) NOT NULL,
+  due_date DATE NOT NULL,
+  status VARCHAR(50) NOT NULL DEFAULT 'pending', -- 'pending', 'paid', 'failed', 'overdue'
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (reservation_id) REFERENCES Reservations(id) ON DELETE CASCADE
+);
+
+-- Table for payments
+CREATE TABLE Payments (
+  id SERIAL PRIMARY KEY,
+  reservation_id INTEGER NOT NULL,
+  installment_id INTEGER, -- Optional reference to an installment
+  stripe_payment_intent_id VARCHAR(255),
+  stripe_checkout_session_id VARCHAR(255),
+  amount DECIMAL(10, 2) NOT NULL,
+  currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+  status VARCHAR(50) NOT NULL, -- pending, succeeded, failed, refunded
+  payment_type VARCHAR(50) NOT NULL, -- booking, installment, deposit, refund
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (reservation_id) REFERENCES Reservations(id) ON DELETE CASCADE,
+  FOREIGN KEY (installment_id) REFERENCES Installments(id) ON DELETE SET NULL
+);
+
+-- Table for email notifications
+CREATE TABLE Notifications (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER,
+  admin_id INTEGER,
+  reservation_id INTEGER,
+  type VARCHAR(50) NOT NULL, -- reservation_request, reservation_approved, payment_success, etc.
+  message TEXT NOT NULL,
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE SET NULL,
+  FOREIGN KEY (admin_id) REFERENCES Admins(id) ON DELETE SET NULL,
+  FOREIGN KEY (reservation_id) REFERENCES Reservations(id) ON DELETE CASCADE
+);
+
+
+```
 
 
 
