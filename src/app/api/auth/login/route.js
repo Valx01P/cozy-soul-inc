@@ -23,25 +23,26 @@ export async function POST(request) {
     }
     
     // Query for admin with matching email
-    const { data: admin, error: aError } = await supabase.from('admins').select('*').eq('email', email).single()
+    const { data: user, error: userError } = await supabase.from('users').select('*').eq('email', email).single()
     
-    if (aError) {
-      throw new Error(`Error fetching admin, ${aError.message}`)
-    } else if (!admin) {
-      return NextResponse.json({ message: 'Admin not found' }, { status: 404 })
+    if (userError) {
+      throw new Error(`Error fetching user, ${userError.message}`)
+    } else if (!user) {
+      return NextResponse.json({ message: 'User not found' }, { status: 404 })
     }
         
     // For testing purposes, we're using unhashed passwords
     // In production, you would use bcrypt.compare() or similar
-    if (admin.password !== password) {
+    if (user.password !== password) {
       return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 })
     }
     
-    // Admin is authenticated, generate tokens
+    // User is authenticated, generate tokens
     const payload = {
-      admin_id: admin.id,
-      email: admin.email,
-      username: admin.username
+      user_id: user.id,
+      email: user.email,
+      username: user.username,
+      role: user.role // guest or admin
     }
     
     const accessToken = await generateAccessToken(payload)

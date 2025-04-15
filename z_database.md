@@ -2,16 +2,27 @@
 __* Database Setup SQL Query *__
 
 ```sql
--- Table for admin access
-CREATE TABLE Admins (
+CREATE TABLE Users (
   id SERIAL PRIMARY KEY,
   first_name VARCHAR(255) NOT NULL,
   last_name VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
-  password TEXT NOT NULL, -- unhashed, as specified
-  username VARCHAR(255) UNIQUE NOT NULL,
+  google_id VARCHAR(255) UNIQUE, -- Required for OAuth users, null for others
+  password TEXT, -- Required for password-based auth
+  email_verified BOOLEAN DEFAULT FALSE,
+  role VARCHAR(50) NOT NULL DEFAULT 'guest', -- 'guest', 'admin'
+  phone VARCHAR(20),
   profile_image VARCHAR(255),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE EmailVerificationCodes (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  code VARCHAR(255) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
 -- Table for amenity categories
@@ -49,9 +60,6 @@ CREATE TABLE Properties (
   host_id INTEGER NOT NULL,
   title VARCHAR(255) NOT NULL,
   description TEXT,
-  price DECIMAL(10, 2) NOT NULL,
-  price_description VARCHAR(50) NOT NULL,
-  currency VARCHAR(3) DEFAULT 'USD',
   main_image VARCHAR(255),
   side_image1 VARCHAR(255),
   side_image2 VARCHAR(255),
@@ -64,7 +72,7 @@ CREATE TABLE Properties (
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (host_id) REFERENCES Admins(id) ON DELETE CASCADE,
+  FOREIGN KEY (host_id) REFERENCES Users(id) ON DELETE CASCADE,
   FOREIGN KEY (location_id) REFERENCES Locations(id) ON DELETE CASCADE
 );
 
@@ -84,6 +92,101 @@ CREATE TABLE PropertyAmenities (
   FOREIGN KEY (property_id) REFERENCES Properties(id) ON DELETE CASCADE,
   FOREIGN KEY (amenity_id) REFERENCES Amenities(id) ON DELETE CASCADE
 );
+
+-- Payment Integration Update 4/13/2025
+
+-- Table for property availability (calendars)
+CREATE TABLE PropertyAvailability (
+  id SERIAL PRIMARY KEY,
+  property_id INTEGER NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  is_available BOOLEAN NOT NULL DEFAULT TRUE,
+  price DECIMAL(10, 2) NOT NULL,
+  availability_type VARCHAR(50) NOT NULL DEFAULT 'default', -- 'default', 'booked', 'blocked'
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (property_id) REFERENCES Properties(id) ON DELETE CASCADE
+);
+
+
+-- Table for reservations
+CREATE TABLE Reservations (
+  id SERIAL PRIMARY KEY,
+  property_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  check_in_date DATE NOT NULL,
+  check_out_date DATE NOT NULL,
+  guests_count INTEGER NOT NULL,
+  total_price DECIMAL(10, 2) NOT NULL,
+  total_installments INTEGER,
+  current_installment INTEGER DEFAULT 0,
+  next_payment_date DATE,
+  status VARCHAR(50) NOT NULL DEFAULT 'pending', -- pending, approved, rejected, cancelled, completed
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (property_id) REFERENCES Properties(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+);
+
+-- Table for installments (future payments)
+CREATE TABLE Installments (
+  id SERIAL PRIMARY KEY,
+  reservation_id INTEGER NOT NULL,
+  amount DECIMAL(10, 2) NOT NULL,
+  due_date DATE NOT NULL,
+  status VARCHAR(50) NOT NULL DEFAULT 'pending', -- 'pending', 'paid', 'failed', 'overdue'
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (reservation_id) REFERENCES Reservations(id) ON DELETE CASCADE
+);
+
+-- Table for payments
+CREATE TABLE Payments (
+  id SERIAL PRIMARY KEY,
+  reservation_id INTEGER NOT NULL,
+  installment_id INTEGER, -- Optional reference to an installment
+  stripe_payment_intent_id VARCHAR(255),
+  stripe_checkout_session_id VARCHAR(255),
+  amount DECIMAL(10, 2) NOT NULL,
+  currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+  status VARCHAR(50) NOT NULL, -- pending, succeeded, failed, refunded
+  payment_type VARCHAR(50) NOT NULL, -- booking, installment, deposit, refund
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (reservation_id) REFERENCES Reservations(id) ON DELETE CASCADE,
+  FOREIGN KEY (installment_id) REFERENCES Installments(id) ON DELETE SET NULL
+);
+
+-- Table for email notifications
+CREATE TABLE Notifications (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER,
+  reservation_id INTEGER,
+  type VARCHAR(50) NOT NULL, -- reservation_request, reservation_approved, payment_success, etc.
+  message TEXT NOT NULL,
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE SET NULL,
+  FOREIGN KEY (reservation_id) REFERENCES Reservations(id) ON DELETE CASCADE
+);
+
+-- Table for identity verification
+CREATE TABLE IdentityVerifications (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  stripe_verification_session_id VARCHAR(255) UNIQUE,
+  verification_url VARCHAR(255),
+  status VARCHAR(50) NOT NULL DEFAULT 'pending', -- pending, verified, rejected, expired, processing
+  verification_type VARCHAR(50) NOT NULL DEFAULT 'id_document',
+  submitted_at TIMESTAMP,
+  verified_at TIMESTAMP,
+  expires_at TIMESTAMP,
+  last_error TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+);
+
 ```
 
 
@@ -94,13 +197,19 @@ CREATE TABLE PropertyAmenities (
 __* Drop Database *__
 ```sql
 -- This will forcibly drop all tables regardless of dependencies
+DROP TABLE IF EXISTS IdentityVerifications CASCADE;
+DROP TABLE IF EXISTS Notifications CASCADE;
+DROP TABLE IF EXISTS Payments CASCADE;
+DROP TABLE IF EXISTS Installments CASCADE;
+DROP TABLE IF EXISTS Reservations CASCADE;
+DROP TABLE IF EXISTS PropertyAvailability CASCADE;
 DROP TABLE IF EXISTS PropertyAmenities CASCADE;
 DROP TABLE IF EXISTS PropertyImages CASCADE;
 DROP TABLE IF EXISTS Properties CASCADE;
 DROP TABLE IF EXISTS Amenities CASCADE;
 DROP TABLE IF EXISTS Locations CASCADE;
 DROP TABLE IF EXISTS AmenitiesCategories CASCADE;
-DROP TABLE IF EXISTS Admins CASCADE;
+DROP TABLE IF EXISTS Users CASCADE;
 
 -- Also drop the trigger function
 DROP FUNCTION IF EXISTS update_timestamp() CASCADE;
@@ -115,8 +224,10 @@ __* Database Seeding SQL Query *__
 
 ```sql
 -- Insert admin user
-INSERT INTO Admins (first_name, last_name, email, password, username, profile_image)
-VALUES ('Pablo', 'Valdes', 'example@gmail.com', 'password123', 'Admin', 'https://placehold.co/1024x1024/png?text=Admin');
+INSERT INTO Users (first_name, last_name, email, password, email_verified, role, profile_image)
+VALUES ('Pablo', 'Valdes', 'example@gmail.com', 'password123', TRUE, 'admin', 'https://placehold.co/1024x1024/png?text=Admin'),
+('John', 'Doe', 'john.doe@example.com', 'password456', TRUE, 'user', 'https://placehold.co/1024x1024/png?text=User'),
+('Alice', 'Smith', 'alice.smith@example.com', 'password789', FALSE, 'user', 'https://placehold.co/1024x1024/png?text=User');
 
 -- Insert amenity categories
 INSERT INTO AmenitiesCategories (name) VALUES 
@@ -306,16 +417,16 @@ INSERT INTO Locations (address, street, apt, city, state, zip, country, latitude
 
 -- Insert sample properties
 INSERT INTO Properties (
-  host_id, title, description, price, price_description, currency, 
+  host_id, title, description, 
   main_image, side_image1, side_image2, location_id, 
   number_of_guests, number_of_bedrooms, number_of_beds, number_of_bathrooms, additional_info
 ) VALUES
-(1, 'Beautiful Apartment', 'A beautiful apartment in the city center.', 120, 'daily', 'USD',
+(1, 'Beautiful Apartment', 'A beautiful apartment in the city center.',
 'https://placehold.co/1024x1024/png?text=Main+Image', 'https://placehold.co/1024x1024/png?text=Side+Image+1',
 'https://placehold.co/1024x1024/png?text=Side+Image+2', 1,
 4, 2, 3, 2, 'House rules: No smoking, no pets. Check-in after 3 PM, check-out before 11 AM.'),
 
-(1, 'Cozy Cottage', 'A cozy cottage in the countryside.', 150, 'for five days', 'USD',
+(1, 'Cozy Cottage', 'A cozy cottage in the countryside.',
 'https://placehold.co/1024x1024/png?text=Main+Image', 'https://placehold.co/1024x1024/png?text=Side+Image+1', 
 'https://placehold.co/1024x1024/png?text=Side+Image+2', 2,
 6, 3, 3, 2, '');
@@ -349,4 +460,118 @@ INSERT INTO PropertyAmenities (property_id, amenity_id) VALUES
 (2, 11),
 (2, 12),
 (2, 13);
+
+
+
+-- New UPDATE 4/15/2025
+
+-- Insert sample property availability
+INSERT INTO PropertyAvailability (property_id, start_date, end_date, is_available, price, availability_type) VALUES
+-- Property 1 (Beautiful Apartment)
+(1, '2025-05-01', '2025-05-14', TRUE, 120.00, 'default'),
+(1, '2025-05-15', '2025-05-31', TRUE, 135.00, 'default'),
+(1, '2025-06-01', '2025-06-14', TRUE, 150.00, 'default'),
+(1, '2025-06-15', '2025-06-20', FALSE, 150.00, 'booked'),
+(1, '2025-06-21', '2025-06-30', TRUE, 165.00, 'default'),
+(1, '2025-07-01', '2025-07-05', FALSE, 180.00, 'blocked'),
+(1, '2025-07-06', '2025-07-31', TRUE, 180.00, 'default'),
+(1, '2025-08-01', '2025-08-31', TRUE, 190.00, 'default'),
+
+-- Property 2 (Cozy Cottage)
+(2, '2025-05-01', '2025-05-31', TRUE, 150.00, 'default'),
+(2, '2025-06-01', '2025-06-10', TRUE, 165.00, 'default'),
+(2, '2025-06-11', '2025-06-18', FALSE, 165.00, 'booked'),
+(2, '2025-06-19', '2025-06-30', TRUE, 165.00, 'default'),
+(2, '2025-07-01', '2025-07-15', TRUE, 185.00, 'default'),
+(2, '2025-07-16', '2025-07-23', FALSE, 185.00, 'booked'),
+(2, '2025-07-24', '2025-07-31', TRUE, 185.00, 'default'),
+(2, '2025-08-01', '2025-08-31', TRUE, 195.00, 'default');
+
+-- Insert sample reservations
+INSERT INTO Reservations (
+  property_id, user_id, check_in_date, check_out_date, 
+  guests_count, total_price, total_installments, current_installment, 
+  next_payment_date, status, created_at, updated_at
+) VALUES
+-- Single payment reservations
+(1, 2, '2025-06-15', '2025-06-20', 3, 750.00, NULL, NULL, NULL, 'approved', '2025-04-10 14:23:45', '2025-04-10 15:30:21'),
+(2, 3, '2025-06-11', '2025-06-18', 4, 1155.00, NULL, NULL, NULL, 'approved', '2025-04-05 09:12:33', '2025-04-05 10:45:12'),
+
+-- Installment-based reservations
+(2, 2, '2025-07-16', '2025-07-23', 2, 1295.00, 3, 1, '2025-05-15', 'approved', '2025-04-08 16:45:22', '2025-04-09 08:15:42'),
+(1, 3, '2025-09-10', '2025-09-17', 4, 1330.00, 2, 1, '2025-06-10', 'pending', '2025-04-12 11:23:17', '2025-04-12 11:23:17');
+
+-- Insert sample installments
+INSERT INTO Installments (reservation_id, amount, due_date, status, created_at, updated_at) VALUES
+-- For reservation 3 (property 2, user 2)
+(3, 431.67, '2025-04-09', 'paid', '2025-04-09 08:15:42', '2025-04-09 08:20:10'),
+(3, 431.67, '2025-05-15', 'pending', '2025-04-09 08:15:42', '2025-04-09 08:15:42'),
+(3, 431.66, '2025-06-15', 'pending', '2025-04-09 08:15:42', '2025-04-09 08:15:42'),
+
+-- For reservation 4 (property 1, user 3)
+(4, 665.00, '2025-04-12', 'paid', '2025-04-12 11:23:17', '2025-04-12 11:30:05'),
+(4, 665.00, '2025-06-10', 'pending', '2025-04-12 11:23:17', '2025-04-12 11:23:17');
+
+-- Insert sample payments
+INSERT INTO Payments (
+  reservation_id, installment_id, stripe_payment_intent_id, 
+  stripe_checkout_session_id, amount, currency, 
+  status, payment_type, created_at, updated_at
+) VALUES
+-- Full payments for single-payment reservations
+(1, NULL, 'pi_1NSd82KL6EOCZlgVCOzgdxe3', 'cs_test_a1SBJ93xVpFLlM9QKSXf7ZGbeuULCmtB36JLdS1yXFHFnwKPkA8Jm9rVeD', 
+ 750.00, 'USD', 'succeeded', 'booking', '2025-04-10 15:30:21', '2025-04-10 15:30:21'),
+(2, NULL, 'pi_1NSPo4KL6EOCZlgVW3vSgLmn', 'cs_test_b1UWj73Zf5iDxM0QHQbK8WCfdaGYMnxV36KLiR1dVGHGawKTlB8Kn0tVfE', 
+ 1155.00, 'USD', 'succeeded', 'booking', '2025-04-05 10:45:12', '2025-04-05 10:45:12'),
+
+-- Installment payments
+(3, 1, 'pi_1NSQp5KL6EOCZlgVX4wTbMno', 'cs_test_c1VXk63Yg5hEvM1RIRcL8XDgeaHZNoxW36LLhR1eWHIHbxLUmC8Lo0uWgF', 
+ 431.67, 'USD', 'succeeded', 'installment', '2025-04-09 08:20:10', '2025-04-09 08:20:10'),
+(4, 4, 'pi_1NTa53KL6EOCZlgVY5xUcNop', 'cs_test_d1WYl53Zh5iFwM2SJSdM8YEhfbIaNpyX36MMiS1fXIJIcyMVnD8Mp0vXhG', 
+ 665.00, 'USD', 'succeeded', 'installment', '2025-04-12 11:30:05', '2025-04-12 11:30:05');
+
+-- Insert sample notifications
+INSERT INTO Notifications (user_id, reservation_id, type, message, is_read, created_at) VALUES
+-- Host notifications
+(1, 1, 'reservation_request', 'You have a new reservation request for "Beautiful Apartment"', TRUE, '2025-04-10 14:23:45'),
+(1, 1, 'payment_received', 'Payment received for reservation #1', FALSE, '2025-04-10 15:30:21'),
+(1, 2, 'reservation_request', 'You have a new reservation request for "Cozy Cottage"', TRUE, '2025-04-05 09:12:33'),
+(1, 2, 'payment_received', 'Payment received for reservation #2', TRUE, '2025-04-05 10:45:12'),
+(1, 3, 'reservation_request', 'You have a new reservation request for "Cozy Cottage"', TRUE, '2025-04-08 16:45:22'),
+(1, 3, 'payment_received', 'First installment payment received for reservation #3', TRUE, '2025-04-09 08:20:10'),
+(1, 4, 'reservation_request', 'You have a new reservation request for "Beautiful Apartment"', FALSE, '2025-04-12 11:23:17'),
+(1, 4, 'payment_received', 'First installment payment received for reservation #4', FALSE, '2025-04-12 11:30:05'),
+
+-- Guest notifications
+(2, 1, 'reservation_approved', 'Your reservation for "Beautiful Apartment" has been approved', TRUE, '2025-04-10 15:30:21'),
+(2, 1, 'payment_success', 'Your payment for "Beautiful Apartment" was successful', TRUE, '2025-04-10 15:30:21'),
+(2, 3, 'reservation_approved', 'Your reservation for "Cozy Cottage" has been approved', TRUE, '2025-04-09 08:15:42'),
+(2, 3, 'payment_success', 'Your first installment payment for "Cozy Cottage" was successful', TRUE, '2025-04-09 08:20:10'),
+(2, 3, 'payment_reminder', 'Reminder: Your next installment payment for "Cozy Cottage" is due on May 15, 2025', FALSE, '2025-05-08 09:00:00'),
+
+(3, 2, 'reservation_approved', 'Your reservation for "Cozy Cottage" has been approved', TRUE, '2025-04-05 10:45:12'),
+(3, 2, 'payment_success', 'Your payment for "Cozy Cottage" was successful', TRUE, '2025-04-05 10:45:12'),
+(3, 4, 'reservation_pending', 'Your reservation for "Beautiful Apartment" is pending approval', TRUE, '2025-04-12 11:23:17'),
+(3, 4, 'payment_success', 'Your first installment payment for "Beautiful Apartment" was successful', TRUE, '2025-04-12 11:30:05');
+
+-- Insert sample identity verifications
+INSERT INTO IdentityVerifications (
+  user_id, stripe_verification_session_id, verification_url,
+  status, verification_type, submitted_at, verified_at, expires_at,
+  created_at, updated_at
+) VALUES
+-- Verified user
+(1, 'vs_1NSd82KL6EOCZlgVCOthkq1a', 'https://stripe.com/identity/verification/secret/vs_1NSd82KL6EOCZlgVCOthkq1a',
+ 'verified', 'id_document', '2025-03-15 09:34:21', '2025-03-15 09:45:12', '2026-03-15 09:45:12',
+ '2025-03-15 09:30:00', '2025-03-15 09:45:12'),
+
+-- Pending verification
+(2, 'vs_1NTh93LM7FODamhWDPuilt2b', 'https://stripe.com/identity/verification/secret/vs_1NTh93LM7FODamhWDPuilt2b',
+ 'pending', 'id_document', '2025-04-10 14:22:33', NULL, NULL,
+ '2025-04-10 14:20:00', '2025-04-10 14:22:33'),
+
+-- Verified user
+(3, 'vs_1NSPo4KL6EOCZlgVW3wTbn3c', 'https://stripe.com/identity/verification/secret/vs_1NSPo4KL6EOCZlgVW3wTbn3c',
+ 'verified', 'id_document', '2025-04-01 10:12:45', '2025-04-01 10:25:33', '2026-04-01 10:25:33',
+ '2025-04-01 10:10:00', '2025-04-01 10:25:33');
 ```

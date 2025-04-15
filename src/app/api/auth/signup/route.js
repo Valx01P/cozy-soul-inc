@@ -1,0 +1,98 @@
+import { NextResponse } from 'next/server'
+import supabase from '@/app/services/supabase'
+import bcrypt from 'bcryptjs'
+import { generateAccessToken, generateRefreshToken, setAuthCookies } from '@/app/lib/auth'
+
+/**
+ *
+  CREATE TABLE Users (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    google_id VARCHAR(255) UNIQUE, -- Required for OAuth users, null for others
+    password TEXT, -- Required for password-based auth
+    email_verified BOOLEAN DEFAULT FALSE,
+    role VARCHAR(50) NOT NULL DEFAULT 'guest', -- 'guest', 'admin'
+    phone VARCHAR(20),
+    profile_image VARCHAR(255) ,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+ */
+
+/**
+ * Handles native user sign up
+ * @example Request Body:
+ * {
+ *   "first_name": "John",
+ *   "last_name": "Doe",
+ *   "email": "user@example.com",
+ *   "password": "yourpassword" -- will be hashed
+ * }
+ */
+export async function POST(request) {
+  try {
+    const { first_name, last_name, email, password } = await request.json()
+
+    // Validate input
+    if (!first_name || !last_name || !email || !password) {
+      return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
+    }
+
+    // Check if user already exists
+    const { data: existingUsers, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+
+
+    if (userError) {
+      return NextResponse.json({ error: userError.message }, { status: 500 })
+    }
+
+
+    if (existingUsers && existingUsers.length > 0) {
+      return NextResponse.json({ error: 'Email already in use' }, { status: 400 })
+    }
+
+
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+
+    const { data: newUser, error: createUserError } = await supabase
+      .from('users')
+      .insert({ first_name, last_name, email, password: hashedPassword })
+      .select()
+      .single()
+
+    if (createUserError) {
+      return NextResponse.json({ error: createUserError.message }, { status: 500 })
+    }
+
+    const payload = {
+      user_id: newUser.id,
+      first_name: newUser.first_name,
+      last_name: newUser.last_name,
+      email: newUser.email,
+      role: newUser.role // 'guest'
+    }
+
+    const accessToken = await generateAccessToken(payload)
+    const refreshToken = await generateRefreshToken(payload)
+
+    await setAuthCookies(accessToken, refreshToken)
+
+    const response = {
+      message: 'User created successfully',
+      first_name: newUser.first_name,
+      last_name: newUser.last_name,
+      email: newUser.email,
+      role: newUser.role
+    }
+
+    return NextResponse.json(response, { status: 201 })
+
+  } catch (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
