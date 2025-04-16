@@ -76,7 +76,10 @@ export async function POST(request) {
       first_name: newUser.first_name,
       last_name: newUser.last_name,
       email: newUser.email,
-      role: newUser.role // 'guest'
+      role: newUser.role, // 'guest'
+      email_verified: newUser.email_verified,
+      phone_verified: newUser.phone_verified,
+      identity_verified: newUser.identity_verified
     }
 
     const accessToken = await generateAccessToken(payload)

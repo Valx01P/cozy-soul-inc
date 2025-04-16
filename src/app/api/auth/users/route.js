@@ -46,7 +46,10 @@ export async function GET(request) {
      *   "first_name": "John",
      *   "last_name": "Doe",
      *   "email": "user@example.com",
-     *   "role": "guest"
+     *   "role": "guest",
+     *   "email_verified": false,
+     *   "phone_verified": false,
+     *   "identity_verified": false
      * }
      */
     

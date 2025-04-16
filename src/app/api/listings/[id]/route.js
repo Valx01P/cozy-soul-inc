@@ -379,7 +379,10 @@ export async function PUT(request, { params }) {
      *   "first_name": "John",
      *   "last_name": "Doe",
      *   "email": "user@example.com",
-     *   "role": "guest"
+     *   "role": "guest",
+     *   "email_verified": false,
+     *   "phone_verified": false,
+     *   "identity_verified": false
      * }
      */
     
@@ -418,9 +421,7 @@ export async function PUT(request, { params }) {
     
     for (const field of requiredFields) {
       if (!data[field]) {
-        return NextResponse.json({ 
-          error: `Missing required field: ${field}` 
-        }, { status: 400 })
+        return NextResponse.json({ error: `Missing required field: ${field}` }, { status: 400 })
       }
     }
     
@@ -545,9 +546,7 @@ export async function PUT(request, { params }) {
         const availFields = ['start_date', 'end_date', 'price', 'is_available']
         for (const field of availFields) {
           if (avail[field] === undefined) {
-            return NextResponse.json({
-              error: `Missing required availability field: ${field} at index ${index}`
-            }, { status: 400 })
+            return NextResponse.json({ error: `Missing required availability field: ${field} at index ${index}` }, { status: 400 })
           }
         }
       }
@@ -722,14 +721,17 @@ export async function DELETE(request, { params }) {
 
     const payload = await verifyToken(accessToken)
 
-    /**
+     /**
      * @example Payload:
      * {
      *   "user_id": "123",
      *   "first_name": "John",
      *   "last_name": "Doe",
      *   "email": "user@example.com",
-     *   "role": "guest"
+     *   "role": "guest",
+     *   "email_verified": false,
+     *   "phone_verified": false,
+     *   "identity_verified": false
      * }
      */
     

@@ -56,7 +56,10 @@ export async function POST(request) {
      *   "first_name": "John",
      *   "last_name": "Doe",
      *   "email": "user@example.com",
-     *   "role": "guest"
+     *   "role": "guest",
+     *   "email_verified": false,
+     *   "phone_verified": false,
+     *   "identity_verified": false
      * }
      */
 
@@ -64,8 +67,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    const { user_id, email, first_name, last_name } = payload
+    const { user_id, email, first_name, last_name, email_verified } = payload
 
+    if (email_verified) {
+      return NextResponse.json({ error: 'Email already verified' }, { status: 400 })
+    }
 
     const verificationCode = generateRandomCode(6)
 
