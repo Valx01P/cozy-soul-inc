@@ -9,47 +9,66 @@ import {
 } from '@/app/lib/auth'
 
 /**
+ *
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  first_name VARCHAR(255) NOT NULL,
+  last_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  google_id VARCHAR(255) UNIQUE, -- Required for OAuth users, null for others
+  password TEXT, -- Required for password-based auth
+  email_verified BOOLEAN DEFAULT FALSE,
+  role VARCHAR(50) NOT NULL DEFAULT 'guest', -- 'guest', 'admin'
+  phone VARCHAR(20),
+  phone_verified BOOLEAN DEFAULT FALSE,
+  identity_verified BOOLEAN DEFAULT FALSE,
+  profile_image VARCHAR(255) DEFAULT 'https://placehold.co/1024x1024/png?text=User',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+ */
+
+/**
  * Refreshes the access token using a valid refresh token
  * Sets new HTTP-only cookies and returns new tokens
  */
 export async function POST() {
   try {
-    // Get the refresh token from cookie or header
+
     const { refreshToken } = await getAuthTokens()
     
     if (!refreshToken) {
-      return NextResponse.json({ message: 'Refresh token is required' }, { status: 401 })
+      return NextResponse.json({ error: 'Refresh token is required' }, { status: 401 })
     }
     
-    // Verify the refresh token
+
     const payload = await verifyRefreshToken(refreshToken)
     
-    if (!payload || !payload.admin_id) {
-      return NextResponse.json({ message: 'Invalid refresh token' }, { status: 401 })
+    if (!payload || !payload.user_id) {
+      return NextResponse.json({ error: 'Invalid refresh token' }, { status: 401 })
     }
     
-    // Generate new tokens
+
     const newPayload = {
-      admin_id: payload.admin_id,
+      user_id: payload.user_id,
+      first_name: payload.first_name,
+      last_name: payload.last_name,
       email: payload.email,
-      username: payload.username
+      role: payload.role,
     }
     
-    // Correct version with awaits
     const newAccessToken = await generateAccessToken(newPayload)
     const newRefreshToken = await generateRefreshToken(newPayload)
 
-    // Set HTTP-only cookies
+
     await setAuthCookies(newAccessToken, newRefreshToken)
 
     const response = {
-      accessToken: newAccessToken,
-      refreshToken: newRefreshToken
+      message: 'Tokens refreshed successfully'
     }
-    
-    // Return tokens in response for testing with Postman
+
     return NextResponse.json(response, { status: 200 })
   } catch (error) {
-    return NextResponse.json(error.message, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

@@ -2,6 +2,27 @@
 import { NextResponse } from 'next/server'
 import supabase from '@/app/services/supabase'
 import { generateAccessToken, generateRefreshToken, setAuthCookies } from '@/app/lib/auth'
+import bcrypt from 'bcryptjs'
+
+/**
+ * 
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  first_name VARCHAR(255) NOT NULL,
+  last_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  google_id VARCHAR(255) UNIQUE, -- Required for OAuth users, null for others
+  password TEXT, -- Required for password-based auth
+  email_verified BOOLEAN DEFAULT FALSE,
+  role VARCHAR(50) NOT NULL DEFAULT 'guest', -- 'guest', 'admin'
+  phone VARCHAR(20),
+  phone_verified BOOLEAN DEFAULT FALSE,
+  identity_verified BOOLEAN DEFAULT FALSE,
+  profile_image VARCHAR(255) DEFAULT 'https://placehold.co/1024x1024/png?text=User',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+ */
 
 /**
  * Handles admin login with email and password
@@ -17,52 +38,55 @@ export async function POST(request) {
   try {
     const { email, password } = await request.json()
     
-    // Validate input
     if (!email || !password) {
-      return NextResponse.json({ message: 'Email and password are required' }, { status: 400 })
+      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
     
-    // Query for admin with matching email
-    const { data: user, error: userError } = await supabase.from('users').select('*').eq('email', email).single()
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single()
     
     if (userError) {
-      throw new Error(`Error fetching user, ${userError.message}`)
-    } else if (!user) {
-      return NextResponse.json({ message: 'User not found' }, { status: 404 })
-    }
-        
-    // For testing purposes, we're using unhashed passwords
-    // In production, you would use bcrypt.compare() or similar
-    if (user.password !== password) {
-      return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 })
+      return NextResponse.json({ error: userError.message }, { status: 500 })
     }
     
-    // User is authenticated, generate tokens
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+        
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+    }
+    
+
     const payload = {
       user_id: user.id,
+      first_name: user.first_name,
+      last_name: user.last_name,
       email: user.email,
-      username: user.username,
       role: user.role // guest or admin
     }
     
     const accessToken = await generateAccessToken(payload)
     const refreshToken = await generateRefreshToken(payload)
 
-    // Set HTTP-only cookies
     await setAuthCookies(accessToken, refreshToken)
     
-    // Return tokens in response for testing with Postman
+    // role not included in the response for security reasons
     const response = {
-      message: 'Login successful',
-      first_name: admin.first_name,
-      last_name: admin.last_name,
-      email: admin.email,
-      username: admin.username,
-      profile_image: admin.profile_image
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      phone: user.phone,
+      profile_image: user.profile_image
     }
     
     return NextResponse.json(response, { status: 200 })
   } catch (error) {
-    return NextResponse.json(error.message, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

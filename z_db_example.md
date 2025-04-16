@@ -2,7 +2,7 @@
 __* Database Setup SQL Query *__
 
 ```sql
-CREATE TABLE Users (
+CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   first_name VARCHAR(255) NOT NULL,
   last_name VARCHAR(255) NOT NULL,
@@ -11,37 +11,51 @@ CREATE TABLE Users (
   password TEXT, -- Required for password-based auth
   email_verified BOOLEAN DEFAULT FALSE,
   role VARCHAR(50) NOT NULL DEFAULT 'guest', -- 'guest', 'admin'
-  phone VARCHAR(20),
-  profile_image VARCHAR(255),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  phone VARCHAR(20) NOT NULL,
+  phone_verified BOOLEAN DEFAULT FALSE,
+  identity_verified BOOLEAN DEFAULT FALSE,
+  profile_image VARCHAR(255) DEFAULT 'https://placehold.co/1024x1024/png?text=User',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE EmailVerificationCodes (
+CREATE TABLE emailverificationcodes (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL,
   code VARCHAR(255) NOT NULL,
   expires_at TIMESTAMP NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- on new code, just override the old one
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE phoneverificationcodes (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  code VARCHAR(255) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- on new code, just override the old one
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Table for amenity categories
-CREATE TABLE AmenitiesCategories (
+CREATE TABLE amenitiescategories (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL UNIQUE
 );
 
 -- Table for amenities
-CREATE TABLE Amenities (
+CREATE TABLE amenities (
   id SERIAL PRIMARY KEY,
   category_id INTEGER NOT NULL,
   name VARCHAR(255) NOT NULL,
   svg TEXT NOT NULL,
-  FOREIGN KEY (category_id) REFERENCES AmenitiesCategories(id) ON DELETE CASCADE
+  FOREIGN KEY (category_id) REFERENCES amenitiescategories(id) ON DELETE CASCADE
 );
 
 -- Table for locations
-CREATE TABLE Locations (
+CREATE TABLE locations (
   id SERIAL PRIMARY KEY,
   address VARCHAR(255),
   street VARCHAR(255),
@@ -55,7 +69,7 @@ CREATE TABLE Locations (
 );
 
 -- Table for properties (listings)
-CREATE TABLE Properties (
+CREATE TABLE properties (
   id SERIAL PRIMARY KEY,
   host_id INTEGER NOT NULL,
   title VARCHAR(255) NOT NULL,
@@ -72,31 +86,31 @@ CREATE TABLE Properties (
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (host_id) REFERENCES Users(id) ON DELETE CASCADE,
-  FOREIGN KEY (location_id) REFERENCES Locations(id) ON DELETE CASCADE
+  FOREIGN KEY (host_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE
 );
 
 -- Table for property images
-CREATE TABLE PropertyImages (
+CREATE TABLE propertyimages (
   id SERIAL PRIMARY KEY,
   property_id INTEGER NOT NULL,
   image_url VARCHAR(255) NOT NULL,
-  FOREIGN KEY (property_id) REFERENCES Properties(id) ON DELETE CASCADE
+  FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
 );
 
 -- Junction table for property amenities
-CREATE TABLE PropertyAmenities (
+CREATE TABLE propertyamenities (
   property_id INTEGER NOT NULL,
   amenity_id INTEGER NOT NULL,
   PRIMARY KEY (property_id, amenity_id),
-  FOREIGN KEY (property_id) REFERENCES Properties(id) ON DELETE CASCADE,
-  FOREIGN KEY (amenity_id) REFERENCES Amenities(id) ON DELETE CASCADE
+  FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+  FOREIGN KEY (amenity_id) REFERENCES amenities(id) ON DELETE CASCADE
 );
 
 -- Payment Integration Update 4/13/2025
 
 -- Table for property availability (calendars)
-CREATE TABLE PropertyAvailability (
+CREATE TABLE propertyavailability (
   id SERIAL PRIMARY KEY,
   property_id INTEGER NOT NULL,
   start_date DATE NOT NULL,
@@ -105,12 +119,12 @@ CREATE TABLE PropertyAvailability (
   price DECIMAL(10, 2) NOT NULL,
   availability_type VARCHAR(50) NOT NULL DEFAULT 'default', -- 'default', 'booked', 'blocked'
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (property_id) REFERENCES Properties(id) ON DELETE CASCADE
+  FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
 );
 
 
 -- Table for reservations
-CREATE TABLE Reservations (
+CREATE TABLE reservations (
   id SERIAL PRIMARY KEY,
   property_id INTEGER NOT NULL,
   user_id INTEGER NOT NULL,
@@ -124,12 +138,12 @@ CREATE TABLE Reservations (
   status VARCHAR(50) NOT NULL DEFAULT 'pending', -- pending, approved, rejected, cancelled, completed
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (property_id) REFERENCES Properties(id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+  FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Table for installments (future payments)
-CREATE TABLE Installments (
+CREATE TABLE installments (
   id SERIAL PRIMARY KEY,
   reservation_id INTEGER NOT NULL,
   amount DECIMAL(10, 2) NOT NULL,
@@ -137,11 +151,11 @@ CREATE TABLE Installments (
   status VARCHAR(50) NOT NULL DEFAULT 'pending', -- 'pending', 'paid', 'failed', 'overdue'
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (reservation_id) REFERENCES Reservations(id) ON DELETE CASCADE
+  FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE
 );
 
 -- Table for payments
-CREATE TABLE Payments (
+CREATE TABLE payments (
   id SERIAL PRIMARY KEY,
   reservation_id INTEGER NOT NULL,
   installment_id INTEGER, -- Optional reference to an installment
@@ -153,12 +167,12 @@ CREATE TABLE Payments (
   payment_type VARCHAR(50) NOT NULL, -- booking, installment, deposit, refund
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (reservation_id) REFERENCES Reservations(id) ON DELETE CASCADE,
-  FOREIGN KEY (installment_id) REFERENCES Installments(id) ON DELETE SET NULL
+  FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE,
+  FOREIGN KEY (installment_id) REFERENCES installments(id) ON DELETE SET NULL
 );
 
 -- Table for email notifications
-CREATE TABLE Notifications (
+CREATE TABLE notifications (
   id SERIAL PRIMARY KEY,
   user_id INTEGER,
   reservation_id INTEGER,
@@ -166,12 +180,12 @@ CREATE TABLE Notifications (
   message TEXT NOT NULL,
   is_read BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE SET NULL,
-  FOREIGN KEY (reservation_id) REFERENCES Reservations(id) ON DELETE CASCADE
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE
 );
 
 -- Table for identity verification
-CREATE TABLE IdentityVerifications (
+CREATE TABLE identityverifications (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL,
   stripe_verification_session_id VARCHAR(255) UNIQUE,
@@ -184,7 +198,7 @@ CREATE TABLE IdentityVerifications (
   last_error TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 ```
@@ -196,19 +210,21 @@ CREATE TABLE IdentityVerifications (
 __* Drop Database *__
 ```sql
 -- This will forcibly drop all tables regardless of dependencies
-DROP TABLE IF EXISTS IdentityVerifications CASCADE;
-DROP TABLE IF EXISTS Notifications CASCADE;
-DROP TABLE IF EXISTS Payments CASCADE;
-DROP TABLE IF EXISTS Installments CASCADE;
-DROP TABLE IF EXISTS Reservations CASCADE;
-DROP TABLE IF EXISTS PropertyAvailability CASCADE;
-DROP TABLE IF EXISTS PropertyAmenities CASCADE;
-DROP TABLE IF EXISTS PropertyImages CASCADE;
-DROP TABLE IF EXISTS Properties CASCADE;
-DROP TABLE IF EXISTS Amenities CASCADE;
-DROP TABLE IF EXISTS Locations CASCADE;
-DROP TABLE IF EXISTS AmenitiesCategories CASCADE;
-DROP TABLE IF EXISTS Users CASCADE;
+DROP TABLE IF EXISTS identityverifications CASCADE;
+DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS payments CASCADE;
+DROP TABLE IF EXISTS installments CASCADE;
+DROP TABLE IF EXISTS reservations CASCADE;
+DROP TABLE IF EXISTS propertyavailability CASCADE;
+DROP TABLE IF EXISTS propertyamenities CASCADE;
+DROP TABLE IF EXISTS propertyimages CASCADE;
+DROP TABLE IF EXISTS properties CASCADE;
+DROP TABLE IF EXISTS amenities CASCADE;
+DROP TABLE IF EXISTS locations CASCADE;
+DROP TABLE IF EXISTS amenitiescategories CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS emailverificationcodes CASCADE;
+DROP TABLE IF EXISTS phoneverificationcodes CASCADE;
 
 -- Also drop the trigger function
 DROP FUNCTION IF EXISTS update_timestamp() CASCADE;
@@ -222,14 +238,14 @@ __* Database Seeding SQL Query *__
 
 ```sql
 -- Insert admin user
-INSERT INTO Users (first_name, last_name, email, password, email_verified, role, profile_image)
-VALUES ('Pablo', 'Valdes', 'example@gmail.com', 'password123', TRUE, 'admin', 'https://placehold.co/1024x1024/png?text=Admin'),
-('John', 'Doe', 'john.doe@example.com', 'password456', TRUE, 'user', 'https://placehold.co/1024x1024/png?text=User'),
-('Alice', 'Smith', 'alice.smith@example.com', 'password789', FALSE, 'user', 'https://placehold.co/1024x1024/png?text=User');
+INSERT INTO users (first_name, last_name, email, password, email_verified, role, phone, phone_verified, identity_verified, profile_image)
+VALUES ('Pablo', 'Valdes', 'example@gmail.com', 'password123', TRUE, 'admin', '786-346-0791', FALSE, FALSE, 'https://placehold.co/1024x1024/png?text=Admin'),
+('John', 'Doe', 'john.doe@example.com', 'password456', TRUE, 'guest', '786-346-0791', FALSE, FALSE, 'https://placehold.co/1024x1024/png?text=User'),
+('Alice', 'Smith', 'alice.smith@example.com', 'password789', FALSE, 'guest', '786-346-0791', FALSE, FALSE, 'https://placehold.co/1024x1024/png?text=User');
 
 
 -- Insert amenity categories
-INSERT INTO AmenitiesCategories (name) VALUES 
+INSERT INTO amenitiescategories (name) VALUES 
 ('Scenic Views'), -- 1
 ('Bathroom'), -- 2
 ('Bedroom and laundry'), -- 3
@@ -250,16 +266,16 @@ INSERT INTO AmenitiesCategories (name) VALUES
 -- THIS SAVES PROMPT CONTEXT, JUST KNOW THERE IS ACTUALLY SVG DATA THERE
 
 -- Scenic Views
-INSERT INTO Amenities (category_id, name, svg) VALUES
+INSERT INTO amenities (category_id, name, svg) VALUES
 (1,'Beach view','<svg></svg>'), -- 1
 (1,'Garden view','<svg></svg>'), -- 2
 (1,'Mountain view','<svg></svg>'), -- 3
 (1,'Ocean view','<svg></svg>'), -- 4
-(1,'City view', '<svg></svg>'), -- 5
+(1,'City view', '<svg></svg>'); -- 5
 
 
 -- Bathroom
-INSERT INTO Amenities (category_id, name, svg) VALUES
+INSERT INTO amenities (category_id, name, svg) VALUES
 (2,'Hair dryer','<svg></svg>'), -- 6
 (2,'Shampoo','<svg></svg>'), -- 7
 (2,'Hot water','<svg></svg>'), -- 8
@@ -268,10 +284,10 @@ INSERT INTO Amenities (category_id, name, svg) VALUES
 (2,'Conditioner','<svg></svg>'), -- 11
 (2,'Body soap','<svg></svg>'), -- 12
 (2,'Bidet','<svg></svg>'), -- 13
-(2,'Cleaning products','<svg></svg>'), -- 14
+(2,'Cleaning products','<svg></svg>'); -- 14
 
 -- Bedroom and laundry
-INSERT INTO Amenities (category_id, name, svg) VALUES
+INSERT INTO amenities (category_id, name, svg) VALUES
 (3,'Washer','<svg></svg>'), -- 15
 (3,'Dryer','<svg></svg>'), -- 16
 (3,'Essentials','<svg></svg>'), -- 17
@@ -282,10 +298,10 @@ INSERT INTO Amenities (category_id, name, svg) VALUES
 (3,'Room-darkening shades','<svg></svg>'), -- 22
 (3,'Safe','<svg></svg>'), -- 23
 (3,'Hair dryer','<svg></svg>'), -- 24
-(3,'Clothing storage','<svg></svg>'), -- 25
+(3,'Clothing storage','<svg></svg>'); -- 25
 
 -- Entertainment
-INSERT INTO Amenities (category_id, name, svg) VALUES
+INSERT INTO amenities (category_id, name, svg) VALUES
 (4,'TV with Standard cable','<svg></svg>'), -- 26
 (4,'Record player','<svg></svg>'), -- 27
 (4,'Exercise equipment','<svg></svg>'), -- 28
@@ -293,17 +309,17 @@ INSERT INTO Amenities (category_id, name, svg) VALUES
 (4,'Bluetooth sound system','<svg></svg>'), -- 30
 (4,'Ethernet connection','<svg></svg>'), -- 31
 (4,'HDTV with standard cable, premium cable','<svg></svg>'), -- 32
-(4,'TV','<svg></svg>'), -- 33
+(4,'TV','<svg></svg>'); -- 33
 
 -- Family
-INSERT INTO Amenities (category_id, name, svg) VALUES
+INSERT INTO amenities (category_id, name, svg) VALUES
 (5,'Window guards','<svg></svg>'), -- 34
 (5,'Babysitter recommendations','<svg></svg>'), -- 35
 (5,'Pack ’n play/Travel crib','<svg></svg>'), -- 36
-(5,'Standalone high chair','<svg></svg>'), -- 37
+(5,'Standalone high chair','<svg></svg>'); -- 37
 
 -- Heating and cooling
-INSERT INTO Amenities (category_id, name, svg) VALUES
+INSERT INTO amenities (category_id, name, svg) VALUES
 (6,'Air conditioning','<svg></svg>'), -- 38
 (6,'Portable air conditioning','<svg></svg>'), -- 39
 (6,'Indoor fireplace: electric','<svg></svg>'), -- 40
@@ -311,23 +327,23 @@ INSERT INTO Amenities (category_id, name, svg) VALUES
 (6,'Ceiling fan','<svg></svg>'), -- 42
 (6,'AC - split type ductless system','<svg></svg>'), -- 43
 (6,'Central air conditioning','<svg></svg>'), -- 44
-(6,'Central heating','<svg></svg>'), -- 45
+(6,'Central heating','<svg></svg>'); -- 45
 
 -- Home safety
-INSERT INTO Amenities (category_id, name, svg) VALUES
+INSERT INTO amenities (category_id, name, svg) VALUES
 (7,'Smoke alarm','<svg></svg>'), -- 46
 (7,'Carbon monoxide alarm','<svg></svg>'), -- 47
 (7,'Fire extinguisher','<svg></svg>'), -- 48
 (7,'First aid kit','<svg></svg>'), -- 49
-(7,'Exterior security cameras on property','<svg></svg>'), -- 50
+(7,'Exterior security cameras on property','<svg></svg>'); -- 50
 
 -- Internet and office
-INSERT INTO Amenities (category_id, name, svg) VALUES
+INSERT INTO amenities (category_id, name, svg) VALUES
 (8,'Wifi','<svg></svg>'), -- 51
-(8,'Dedicated workspace','<svg></svg>'), -- 52
+(8,'Dedicated workspace','<svg></svg>'); -- 52
 
 -- Kitchen and dining
-INSERT INTO Amenities (category_id, name, svg) VALUES
+INSERT INTO amenities (category_id, name, svg) VALUES
 (9,'Refrigerator','<svg></svg>'), -- 53
 (9,'Microwave','<svg></svg>'), -- 54
 (9,'Dishes and silverware','<svg></svg>'), -- 55
@@ -348,17 +364,17 @@ INSERT INTO Amenities (category_id, name, svg) VALUES
 (9,'Wine glasses','<svg></svg>'), -- 70
 (9,'Toaster','<svg></svg>'), -- 71
 (9,'Dining table','<svg></svg>'), -- 72
-(9,'Oven','<svg></svg>'), -- 73
+(9,'Oven','<svg></svg>'); -- 73
 
 -- Location features
-INSERT INTO Amenities (category_id, name, svg) VALUES
+INSERT INTO amenities (category_id, name, svg) VALUES
 (10,'Beach access - Beachfront','<svg></svg>'), -- 74
 (10,'Private entrance','<svg></svg>'), -- 75
 (10,'Waterfront','<svg></svg>'), -- 76
-(10,'Free resort access','<svg></svg>'), -- 77
+(10,'Free resort access','<svg></svg>'); -- 77
 
 -- Outdoor
-INSERT INTO Amenities (category_id, name, svg) VALUES
+INSERT INTO amenities (category_id, name, svg) VALUES
 (11,'Private backyard - Fully fenced','<svg></svg>'), -- 78
 (11,'Outdoor furniture','<svg></svg>'), -- 79
 (11,'Outdoor dining area','<svg></svg>'), -- 80
@@ -366,10 +382,10 @@ INSERT INTO Amenities (category_id, name, svg) VALUES
 (11,'Backyard','<svg></svg>'), -- 82
 (11,'Beach essentials','<svg></svg>'), -- 83
 (11,'Shared backyard - Fully fenced','<svg></svg>'), -- 84
-(11,'Sun loungers','<svg></svg>'), -- 85
+(11,'Sun loungers','<svg></svg>'); -- 85
 
 -- Parking and facilities
-INSERT INTO Amenities (category_id, name, svg) VALUES
+INSERT INTO amenities (category_id, name, svg) VALUES
 (12,'Free parking on premises','<svg></svg>'), -- 86
 (12,'Pool','<svg></svg>'), -- 87
 (12,'Gym','<svg></svg>'), -- 88
@@ -380,10 +396,10 @@ INSERT INTO Amenities (category_id, name, svg) VALUES
 (12,'Paid parking on premises','<svg></svg>'), -- 93
 (12,'Elevator','<svg></svg>'), -- 94
 (12,'Shared hot tub','<svg></svg>'), -- 95
-(12,'Shared gym in building','<svg></svg>'), -- 96
+(12,'Shared gym in building','<svg></svg>'); -- 96
 
 -- Services
-INSERT INTO Amenities (category_id, name, svg) VALUES
+INSERT INTO amenities (category_id, name, svg) VALUES
 (13,'Self check-in','<svg></svg>'), -- 97
 (13,'Building staff','<svg></svg>'), -- 98
 (13,'Smart lock','<svg></svg>'), -- 99
@@ -395,10 +411,10 @@ INSERT INTO Amenities (category_id, name, svg) VALUES
 (13,'Host greets you','<svg></svg>'), -- 105
 (13,'Keypad','<svg></svg>'), -- 106
 (13,'Lockbox','<svg></svg>'), -- 107
-(13,'Housekeeping - available at extra cost','<svg></svg>'), -- 108
+(13,'Housekeeping - available at extra cost','<svg></svg>'); -- 108
 
 -- Not included
-INSERT INTO Amenities (category_id, name, svg) VALUES
+INSERT INTO amenities (category_id, name, svg) VALUES
 (14,'Exterior security cameras on property','<svg></svg>'), -- 109
 (14,'Kitchen','<svg></svg>'), -- 110
 (14,'Heating','<svg></svg>'), -- 111
@@ -413,12 +429,12 @@ INSERT INTO Amenities (category_id, name, svg) VALUES
 (14,'Essentials','<svg></svg>'); -- 120
 
 -- Insert sample locations
-INSERT INTO Locations (address, street, apt, city, state, zip, country, latitude, longitude) VALUES
+INSERT INTO locations (address, street, apt, city, state, zip, country, latitude, longitude) VALUES
 ('123 Main St, New York, NY', '123 Main St', 'Apt 1', 'New York', 'NY', '10001', 'USA', 40.7128, -74.0060),
 ('456 Elm St, Springfield, IL', '456 Elm St', '', 'Springfield', 'IL', '62701', 'USA', 39.7817, -89.6501);
 
 -- Insert sample properties
-INSERT INTO Properties (
+INSERT INTO properties (
   host_id, title, description, 
   main_image, side_image1, side_image2, location_id, 
   number_of_guests, number_of_bedrooms, number_of_beds, number_of_bathrooms, additional_info
@@ -434,7 +450,7 @@ INSERT INTO Properties (
 6, 3, 3, 2, '');
 
 -- Insert sample property images
-INSERT INTO PropertyImages (property_id, image_url) VALUES
+INSERT INTO propertyimages (property_id, image_url) VALUES
 (1, 'https://placehold.co/1024x1024/png?text=Side+Image+3'),
 (1, 'https://placehold.co/1024x1024/png?text=Side+Image+4'),
 (1, 'https://placehold.co/1024x1024/png?text=Side+Image+5'),
@@ -444,7 +460,7 @@ INSERT INTO PropertyImages (property_id, image_url) VALUES
 
 -- Insert sample property amenities
 -- Property 1 (Beautiful Apartment) amenities
-INSERT INTO PropertyAmenities (property_id, amenity_id) VALUES
+INSERT INTO propertyamenities (property_id, amenity_id) VALUES
 (1, 1), -- (property 1, beach view)
 (1, 2),
 (1, 4),
@@ -454,7 +470,7 @@ INSERT INTO PropertyAmenities (property_id, amenity_id) VALUES
 (1, 11);
 
 -- Property 2 (Cozy Cottage) amenities
-INSERT INTO PropertyAmenities (property_id, amenity_id) VALUES
+INSERT INTO propertyamenities (property_id, amenity_id) VALUES
 (2, 3), -- (property 2, mountain view)
 (2, 8),
 (2, 9),
@@ -467,7 +483,7 @@ INSERT INTO PropertyAmenities (property_id, amenity_id) VALUES
 -- New UPDATE 4/15/2025
 
 -- Insert sample property availability
-INSERT INTO PropertyAvailability (property_id, start_date, end_date, is_available, price, availability_type) VALUES
+INSERT INTO propertyavailability (property_id, start_date, end_date, is_available, price, availability_type) VALUES
 -- Property 1 (Beautiful Apartment)
 (1, '2025-05-01', '2025-05-14', TRUE, 120.00, 'default'),
 (1, '2025-05-15', '2025-05-31', TRUE, 135.00, 'default'),
@@ -489,7 +505,7 @@ INSERT INTO PropertyAvailability (property_id, start_date, end_date, is_availabl
 (2, '2025-08-01', '2025-08-31', TRUE, 195.00, 'default');
 
 -- Insert sample reservations
-INSERT INTO Reservations (
+INSERT INTO reservations (
   property_id, user_id, check_in_date, check_out_date, 
   guests_count, total_price, total_installments, current_installment, 
   next_payment_date, status, created_at, updated_at
@@ -503,7 +519,7 @@ INSERT INTO Reservations (
 (1, 3, '2025-09-10', '2025-09-17', 4, 1330.00, 2, 1, '2025-06-10', 'pending', '2025-04-12 11:23:17', '2025-04-12 11:23:17');
 
 -- Insert sample installments
-INSERT INTO Installments (reservation_id, amount, due_date, status, created_at, updated_at) VALUES
+INSERT INTO installments (reservation_id, amount, due_date, status, created_at, updated_at) VALUES
 -- For reservation 3 (property 2, user 2)
 (3, 431.67, '2025-04-09', 'paid', '2025-04-09 08:15:42', '2025-04-09 08:20:10'),
 (3, 431.67, '2025-05-15', 'pending', '2025-04-09 08:15:42', '2025-04-09 08:15:42'),
@@ -514,7 +530,7 @@ INSERT INTO Installments (reservation_id, amount, due_date, status, created_at, 
 (4, 665.00, '2025-06-10', 'pending', '2025-04-12 11:23:17', '2025-04-12 11:23:17');
 
 -- Insert sample payments
-INSERT INTO Payments (
+INSERT INTO payments (
   reservation_id, installment_id, stripe_payment_intent_id, 
   stripe_checkout_session_id, amount, currency, 
   status, payment_type, created_at, updated_at
@@ -532,7 +548,7 @@ INSERT INTO Payments (
  665.00, 'USD', 'succeeded', 'installment', '2025-04-12 11:30:05', '2025-04-12 11:30:05');
 
 -- Insert sample notifications
-INSERT INTO Notifications (user_id, reservation_id, type, message, is_read, created_at) VALUES
+INSERT INTO notifications (user_id, reservation_id, type, message, is_read, created_at) VALUES
 -- Host notifications
 (1, 1, 'reservation_request', 'You have a new reservation request for "Beautiful Apartment"', TRUE, '2025-04-10 14:23:45'),
 (1, 1, 'payment_received', 'Payment received for reservation #1', FALSE, '2025-04-10 15:30:21'),
@@ -556,7 +572,7 @@ INSERT INTO Notifications (user_id, reservation_id, type, message, is_read, crea
 (3, 4, 'payment_success', 'Your first installment payment for "Beautiful Apartment" was successful', TRUE, '2025-04-12 11:30:05');
 
 -- Insert sample identity verifications
-INSERT INTO IdentityVerifications (
+INSERT INTO identityverifications (
   user_id, stripe_verification_session_id, verification_url,
   status, verification_type, submitted_at, verified_at, expires_at,
   created_at, updated_at

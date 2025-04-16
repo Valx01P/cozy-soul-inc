@@ -5,19 +5,22 @@ import { generateAccessToken, generateRefreshToken, setAuthCookies } from '@/app
 
 /**
  *
-  CREATE TABLE Users (
-    id SERIAL PRIMARY KEY,
-    first_name VARCHAR(255) NOT NULL,
-    last_name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    google_id VARCHAR(255) UNIQUE, -- Required for OAuth users, null for others
-    password TEXT, -- Required for password-based auth
-    email_verified BOOLEAN DEFAULT FALSE,
-    role VARCHAR(50) NOT NULL DEFAULT 'guest', -- 'guest', 'admin'
-    phone VARCHAR(20),
-    profile_image VARCHAR(255) ,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  first_name VARCHAR(255) NOT NULL,
+  last_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  google_id VARCHAR(255) UNIQUE, -- Required for OAuth users, null for others
+  password TEXT, -- Required for password-based auth
+  email_verified BOOLEAN DEFAULT FALSE,
+  role VARCHAR(50) NOT NULL DEFAULT 'guest', -- 'guest', 'admin'
+  phone VARCHAR(20),
+  phone_verified BOOLEAN DEFAULT FALSE,
+  identity_verified BOOLEAN DEFAULT FALSE,
+  profile_image VARCHAR(255) DEFAULT 'https://placehold.co/1024x1024/png?text=User',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
  */
 
 /**
@@ -27,19 +30,18 @@ import { generateAccessToken, generateRefreshToken, setAuthCookies } from '@/app
  *   "first_name": "John",
  *   "last_name": "Doe",
  *   "email": "user@example.com",
+ *   "phone": "1234567890",
  *   "password": "yourpassword" -- will be hashed
  * }
  */
 export async function POST(request) {
   try {
-    const { first_name, last_name, email, password } = await request.json()
+    const { first_name, last_name, email, phone, password } = await request.json()
 
-    // Validate input
-    if (!first_name || !last_name || !email || !password) {
+    if (!first_name || !last_name || !email || !phone || !password) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
     }
 
-    // Check if user already exists
     const { data: existingUsers, error: userError } = await supabase
       .from('users')
       .select('*')
@@ -61,7 +63,7 @@ export async function POST(request) {
 
     const { data: newUser, error: createUserError } = await supabase
       .from('users')
-      .insert({ first_name, last_name, email, password: hashedPassword })
+      .insert({ first_name, last_name, email, phone, password: hashedPassword })
       .select()
       .single()
 
@@ -82,12 +84,13 @@ export async function POST(request) {
 
     await setAuthCookies(accessToken, refreshToken)
 
+    // role not included in the response for security reasons
     const response = {
-      message: 'User created successfully',
       first_name: newUser.first_name,
       last_name: newUser.last_name,
       email: newUser.email,
-      role: newUser.role
+      phone: newUser.phone,
+      profile_image: newUser.profile_image
     }
 
     return NextResponse.json(response, { status: 201 })
