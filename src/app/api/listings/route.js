@@ -24,12 +24,21 @@ export async function GET(request) {
         host_id, 
         title, 
         description, 
-        price, 
-        price_description,
-        currency,
+        propertyavailability(
+          id,
+          start_date,
+          end_date,
+          is_available,
+          price,
+          availability_type
+        ),
         main_image, 
         side_image1, 
         side_image2,
+        propertyimages(
+          id,
+          image_url
+        ),
         number_of_guests, 
         number_of_bedrooms, 
         number_of_beds, 
@@ -49,8 +58,7 @@ export async function GET(request) {
           country, 
           latitude, 
           longitude
-        ),
-        propertyimages(id, image_url)
+        )
       `)
     
     // Apply filters if provided
@@ -64,14 +72,14 @@ export async function GET(request) {
     const end = start + limit - 1
     query = query.range(start, end)
     
-    const { data: properties, error } = await query
-    
-    if (error) {
-      throw new Error(`Error fetching properties: ${error.message}`)
-    }
-    
-    if (!properties || properties.length === 0) {
-      return NextResponse.json({ properties: [] })
+    // Supabase query
+    const { data: properties, error: propertyError } = await query
+  
+    if (propertyError){
+      if (propertyError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'No properties found' }, { status: 404 })
+      }
+      return NextResponse.json({ error: `Failed to retrieve properties: ${propertyError.message}` }, { status: 500 })
     }
     
     // Fetch amenities for all properties with categories
@@ -90,7 +98,10 @@ export async function GET(request) {
       .in('property_id', propertyIds)
     
     if (amenitiesError) {
-      throw new Error(`Error fetching amenities: ${amenitiesError.message}`)
+      if (amenitiesError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'No amenities found' }, { status: 404 })
+      }
+      return NextResponse.json({ error: `Failed to retrieve amenities: ${amenitiesError.message}` }, { status: 500 })
     }
     
     // Organize amenities by property and category
@@ -116,7 +127,7 @@ export async function GET(request) {
     })
     
     // Format the response
-    const formattedProperties = properties.map(property => {
+    const response = properties.map(property => {
       // Format the location object
       const location = {
         address: property.locations.address || `${property.locations.street}, ${property.locations.city}, ${property.locations.state}`,
@@ -136,15 +147,23 @@ export async function GET(request) {
       // Get amenities for this property
       const amenities = amenitiesByProperty[property.id] || {}
       
+      // Process availability data
+      const availability = property.propertyavailability.map(avail => ({
+        id: avail.id,
+        start_date: avail.start_date,
+        end_date: avail.end_date,
+        is_available: avail.is_available,
+        price: avail.price,
+        availability_type: avail.availability_type
+      }))
+      
       // Return formatted property object
       return {
         id: property.id,
         host_id: property.host_id,
         title: property.title,
         description: property.description,
-        price: property.price,
-        price_description: property.price_description,
-        currency: property.currency,
+        availability,
         main_image: property.main_image,
         side_image1: property.side_image1,
         side_image2: property.side_image2,
@@ -162,12 +181,9 @@ export async function GET(request) {
       }
     })
     
-    return NextResponse.json({ properties: formattedProperties })
+    return NextResponse.json(response, { status: 200 })
   } catch (error) {
-    console.error('Fetch listings error:', error)
-    return NextResponse.json({ 
-      error: 'Failed to fetch listings' 
-    }, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
 
@@ -180,44 +196,177 @@ export async function GET(request) {
 
 
 
-
-
-
-
-
 /**
- * POST a new listing (admin only)
- * Creates a new property with location and amenities
- */export async function POST(request) {
+ * POST a new listing (ADMINS ONLY)
+ * Creates a new property with location, availability ranges, and amenities
+ * Example Request Body:
+{
+  "title": "Luxury Beachfront Villa",
+  "description": "Experience paradise in this stunning beachfront villa with panoramic ocean views and private access to white sand beaches.",
+  "main_image": "https://placehold.co/1024x1024/png?text=Main+Villa+Image",
+  "side_image1": "https://placehold.co/1024x1024/png?text=Side+View+1",
+  "side_image2": "https://placehold.co/1024x1024/png?text=Side+View+2",
+  "extra_images": [
+    "https://placehold.co/1024x1024/png?text=Pool+Area",
+    "https://placehold.co/1024x1024/png?text=Master+Bedroom",
+    "https://placehold.co/1024x1024/png?text=Kitchen",
+    "https://placehold.co/1024x1024/png?text=Dining+Area"
+  ],
+  "location": {
+    "address": "123 Ocean Drive, Malibu, CA",
+    "street": "123 Ocean Drive",
+    "apt": "",
+    "city": "Malibu",
+    "state": "CA",
+    "zip": "90265",
+    "country": "USA",
+    "latitude": 34.0259,
+    "longitude": -118.7798
+  },
+  "number_of_guests": 8,
+  "number_of_bedrooms": 4,
+  "number_of_beds": 5,
+  "number_of_bathrooms": 4,
+  "additional_info": "House rules: No parties or events. Not suitable for pets. No smoking. Check-in after 3 PM, check-out before 11 AM. Additional cleaning fee applies. The property has 3 full bathrooms and 1 half bathroom.",
+  "is_active": true,
+  "availability": [
+    {
+      "start_date": "2025-06-01",
+      "end_date": "2025-06-14",
+      "is_available": true,
+      "price": 750.00,
+      "availability_type": "default"
+    },
+    {
+      "start_date": "2025-06-15",
+      "end_date": "2025-06-30",
+      "is_available": true,
+      "price": 850.00,
+      "availability_type": "default"
+    },
+    {
+      "start_date": "2025-07-01",
+      "end_date": "2025-07-15",
+      "is_available": true,
+      "price": 950.00,
+      "availability_type": "default"
+    },
+    {
+      "start_date": "2025-07-16",
+      "end_date": "2025-07-31",
+      "is_available": false,
+      "price": 950.00,
+      "availability_type": "blocked"
+    },
+    {
+      "start_date": "2025-08-01",
+      "end_date": "2025-08-31",
+      "is_available": true,
+      "price": 850.00,
+      "availability_type": "default"
+    }
+  ],
+  "amenities": {
+    "Scenic Views": [
+      {"name": "Beach view"},
+      {"name": "Ocean view"}
+    ],
+    "Bathroom": [
+      {"name": "Hot water"},
+      {"name": "Bathtub"},
+      {"name": "Shower gel"},
+      {"name": "Shampoo"}
+    ],
+    "Bedroom and laundry": [
+      {"name": "Washer"},
+      {"name": "Dryer"},
+      {"name": "Bed linens"},
+      {"name": "Extra pillows and blankets"}
+    ],
+    "Entertainment": [
+      {"name": "TV"},
+      {"name": "Bluetooth sound system"}
+    ],
+    "Heating and cooling": [
+      {"name": "Air conditioning"},
+      {"name": "Ceiling fan"}
+    ],
+    "Home safety": [
+      {"name": "Smoke alarm"},
+      {"name": "Carbon monoxide alarm"},
+      {"name": "Fire extinguisher"},
+      {"name": "First aid kit"}
+    ],
+    "Internet and office": [
+      {"name": "Wifi"},
+      {"name": "Dedicated workspace"}
+    ],
+    "Kitchen and dining": [
+      {"name": "Kitchen"},
+      {"name": "Refrigerator"},
+      {"name": "Dishwasher"},
+      {"name": "Microwave"},
+      {"name": "Coffee maker"},
+      {"name": "Wine glasses"},
+      {"name": "Dining table"}
+    ],
+    "Location features": [
+      {"name": "Beach access - Beachfront"},
+      {"name": "Waterfront"}
+    ],
+    "Outdoor": [
+      {"name": "Outdoor furniture"},
+      {"name": "Outdoor dining area"},
+      {"name": "Patio or balcony"}
+    ],
+    "Parking and facilities": [
+      {"name": "Free parking on premises"},
+      {"name": "Pool"}
+    ],
+    "Services": [
+      {"name": "Self check-in"},
+      {"name": "Smart lock"}
+    ]
+  }
+}
+*/
+export async function POST(request) {
   try {
-    // Verify the user's JWT token (admin only)
     const { accessToken } = await getAuthTokens(request)
     
     if (!accessToken) {
-      return NextResponse.json({ 
-        error: 'Unauthorized' 
-      }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
     const payload = await verifyToken(accessToken)
-    
-    if (!payload || !payload.admin_id) {
-      return NextResponse.json({ 
-        error: 'Unauthorized' 
-      }, { status: 401 })
+
+    /**
+     * @example Payload:
+     * {
+     *   "user_id": "123",
+     *   "first_name": "John",
+     *   "last_name": "Doe",
+     *   "email": "user@example.com",
+     *   "role": "guest"
+     * }
+     */
+
+    if (!payload || !payload.user_id) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    if (payload.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
-    // Parse request body
+
     const data = await request.json()
     
-    // Validate required fields
-    const requiredFields = ['title', 'price', 'price_description', 'location', 'number_of_guests', 'number_of_bedrooms', 'number_of_beds', 'number_of_bathrooms']
+    const requiredFields = ['title', 'location', 'number_of_guests', 'number_of_bedrooms', 'number_of_beds', 'number_of_bathrooms']
     
     for (const field of requiredFields) {
       if (!data[field]) {
-        return NextResponse.json({ 
-          error: `Missing required field: ${field}` 
-        }, { status: 400 })
+        return NextResponse.json({ error: `Missing required field: ${field}` }, { status: 400 })
       }
     }
     
@@ -225,9 +374,19 @@ export async function GET(request) {
     const locationFields = ['street', 'city', 'state', 'country', 'latitude', 'longitude']
     for (const field of locationFields) {
       if (!data.location[field]) {
-        return NextResponse.json({ 
-          error: `Missing required location field: ${field}` 
-        }, { status: 400 })
+        return NextResponse.json({ error: `Missing required location field: ${field}` }, { status: 400 })
+      }
+    }
+    
+    // Availability validation
+    if (data.availability && Array.isArray(data.availability)) {
+      for (const [index, avail] of data.availability.entries()) {
+        const availFields = ['start_date', 'end_date', 'price', 'is_available']
+        for (const field of availFields) {
+          if (avail[field] === undefined) {
+            return NextResponse.json({ error: `Missing required availability field: ${field} at index ${index}` }, { status: 400 })
+          }
+        }
       }
     }
     
@@ -246,26 +405,26 @@ export async function GET(request) {
         longitude: data.location.longitude
       })
       .select()
-      .single()
-    
+
     if (locationError) {
-      throw new Error(`Error creating location: ${locationError.message}`)
+      return NextResponse.json({ error: `Error creating location: ${locationError.message}` }, { status: 500 })
+    }
+    
+    if (!location || location.length === 0) {
+      return NextResponse.json({ error: 'Failed to create location' }, { status: 500 })
     }
     
     // 2. Create the property
     const { data: property, error: propertyError } = await supabase
       .from('properties')
       .insert({
-        host_id: payload.admin_id,
+        host_id: payload.user_id,
         title: data.title,
         description: data.description || '',
-        price: data.price,
-        price_description: data.price_description,
-        currency: data.currency || 'USD',
         main_image: data.main_image || null,
         side_image1: data.side_image1 || null,
         side_image2: data.side_image2 || null,
-        location_id: location.id,
+        location_id: location[0].id,
         number_of_guests: data.number_of_guests,
         number_of_bedrooms: data.number_of_bedrooms,
         number_of_beds: data.number_of_beds,
@@ -274,16 +433,21 @@ export async function GET(request) {
         is_active: data.is_active !== undefined ? data.is_active : true
       })
       .select()
-      .single()
     
     if (propertyError) {
-      throw new Error(`Error creating property: ${propertyError.message}`)
+      return NextResponse.json({ error: `Error creating property: ${propertyError.message}` }, { status: 500 })
     }
+    
+    if (!property || property.length === 0) {
+      return NextResponse.json({ error: 'Failed to create property' }, { status: 500 })
+    }
+    
+    const propertyId = property[0].id
     
     // 3. Add extra images if provided
     if (data.extra_images && Array.isArray(data.extra_images) && data.extra_images.length > 0) {
       const extraImagesData = data.extra_images.map(image_url => ({
-        property_id: property.id,
+        property_id: propertyId,
         image_url
       }))
       
@@ -292,11 +456,31 @@ export async function GET(request) {
         .insert(extraImagesData)
       
       if (imagesError) {
-        throw new Error(`Error adding extra images: ${imagesError.message}`)
+        return NextResponse.json({ error: `Error adding extra images: ${imagesError.message}` }, { status: 500 })
       }
     }
     
-    // 4. Add amenities if provided
+    // 4. Add availability if provided
+    if (data.availability && Array.isArray(data.availability) && data.availability.length > 0) {
+      const availabilityData = data.availability.map(avail => ({
+        property_id: propertyId,
+        start_date: avail.start_date,
+        end_date: avail.end_date,
+        is_available: avail.is_available,
+        price: avail.price,
+        availability_type: avail.availability_type || 'default'
+      }))
+      
+      const { error: availabilityError } = await supabase
+        .from('propertyavailability')
+        .insert(availabilityData)
+      
+      if (availabilityError) {
+        return NextResponse.json({ error: `Error adding availability: ${availabilityError.message}` }, { status: 500 })
+      }
+    }
+    
+    // 5. Add amenities if provided
     if (data.amenities && typeof data.amenities === 'object') {
       // First, fetch all categories to get the category IDs
       const { data: categories, error: categoriesError } = await supabase
@@ -304,7 +488,7 @@ export async function GET(request) {
         .select('id, name')
       
       if (categoriesError) {
-        throw new Error(`Error fetching amenity categories: ${categoriesError.message}`)
+        return NextResponse.json({ error: `Error fetching amenity categories: ${categoriesError.message}` }, { status: 500 })
       }
       
       const categoryMap = {}
@@ -318,7 +502,7 @@ export async function GET(request) {
         .select('id, name, category_id')
       
       if (amenitiesError) {
-        throw new Error(`Error fetching amenities: ${amenitiesError.message}`)
+        return NextResponse.json({ error: `Error fetching amenities: ${amenitiesError.message}` }, { status: 500 })
       }
       
       // Process each amenity category from the request
@@ -343,7 +527,7 @@ export async function GET(request) {
             
             if (matchedAmenity) {
               propertyAmenitiesData.push({
-                property_id: property.id,
+                property_id: propertyId,
                 amenity_id: matchedAmenity.id
               })
             } else {
@@ -361,7 +545,7 @@ export async function GET(request) {
               
               if (matchedAmenity) {
                 propertyAmenitiesData.push({
-                  property_id: property.id,
+                  property_id: propertyId,
                   amenity_id: matchedAmenity.id
                 })
               } else {
@@ -378,20 +562,148 @@ export async function GET(request) {
           .insert(propertyAmenitiesData)
         
         if (insertError) {
-          throw new Error(`Error adding amenities: ${insertError.message}`)
+          return NextResponse.json({ error: `Error adding amenities: ${insertError.message}` }, { status: 500 })
         }
       }
     }
     
-    return NextResponse.json({
-      success: true,
-      message: 'Property created successfully',
-      propertyId: property.id
-    })
+    // 6. Fetch the created property with all its relations to return
+    const { data: createdProperty, error: fetchError } = await supabase
+      .from('properties')
+      .select(`
+        id, 
+        host_id, 
+        title, 
+        description, 
+        propertyavailability(
+          id,
+          start_date,
+          end_date,
+          is_available,
+          price,
+          availability_type
+        ),
+        main_image, 
+        side_image1, 
+        side_image2,
+        propertyimages(
+          id,
+          image_url
+        ),
+        number_of_guests, 
+        number_of_bedrooms, 
+        number_of_beds, 
+        number_of_bathrooms,
+        additional_info, 
+        is_active, 
+        created_at, 
+        updated_at,
+        locations(
+          id, 
+          address, 
+          street, 
+          apt, 
+          city, 
+          state, 
+          zip, 
+          country, 
+          latitude, 
+          longitude
+        )
+      `)
+      .eq('id', propertyId)
+      .single()
+    
+    if (fetchError) {
+      return NextResponse.json({ 
+        success: true,
+        message: 'Property created successfully, but unable to fetch complete details',
+        property_id: propertyId
+      })
+    }
+    
+    // Format the response
+    const propertyLocation = {
+      address: createdProperty.locations.address || `${createdProperty.locations.street}, ${createdProperty.locations.city}, ${createdProperty.locations.state}`,
+      street: createdProperty.locations.street,
+      apt: createdProperty.locations.apt || '',
+      city: createdProperty.locations.city,
+      state: createdProperty.locations.state,
+      zip: createdProperty.locations.zip,
+      country: createdProperty.locations.country,
+      latitude: createdProperty.locations.latitude,
+      longitude: createdProperty.locations.longitude
+    }
+    
+    // Get extra images
+    const extraImages = createdProperty.propertyimages.map(img => img.image_url)
+    
+    // Process availability data
+    const availability = createdProperty.propertyavailability.map(avail => ({
+      id: avail.id,
+      start_date: avail.start_date,
+      end_date: avail.end_date,
+      is_available: avail.is_available,
+      price: avail.price,
+      availability_type: avail.availability_type
+    }))
+    
+    // Get amenities for this property
+    const { data: propertyAmenities, error: amenitiesQueryError } = await supabase
+      .from('propertyamenities')
+      .select(`
+        amenities(
+          id,
+          name,
+          svg,
+          amenitiescategories(id, name)
+        )
+      `)
+      .eq('property_id', propertyId)
+    
+    let amenities = {}
+    
+    if (!amenitiesQueryError && propertyAmenities) {
+      // Organize amenities by category
+      propertyAmenities.forEach(item => {
+        const amenity = item.amenities
+        const categoryName = amenity.amenitiescategories.name
+        
+        if (!amenities[categoryName]) {
+          amenities[categoryName] = []
+        }
+        
+        amenities[categoryName].push({
+          name: amenity.name,
+          svg: amenity.svg
+        })
+      })
+    }
+    
+    const response = {
+      id: createdProperty.id,
+      host_id: createdProperty.host_id,
+      title: createdProperty.title,
+      description: createdProperty.description,
+      availability,
+      main_image: createdProperty.main_image,
+      side_image1: createdProperty.side_image1,
+      side_image2: createdProperty.side_image2,
+      extra_images: extraImages,
+      location: propertyLocation,
+      number_of_guests: createdProperty.number_of_guests,
+      number_of_bedrooms: createdProperty.number_of_bedrooms,
+      number_of_beds: createdProperty.number_of_beds,
+      number_of_bathrooms: createdProperty.number_of_bathrooms,
+      additional_info: createdProperty.additional_info || '',
+      amenities,
+      is_active: createdProperty.is_active,
+      created_at: createdProperty.created_at,
+      updated_at: createdProperty.updated_at
+    }
+    
+    return NextResponse.json(response, { status: 201 })
   } catch (error) {
-    console.error('Create listing error:', error)
-    return NextResponse.json({ 
-      error: 'Failed to create listing' 
-    }, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

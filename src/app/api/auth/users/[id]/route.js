@@ -68,7 +68,10 @@ export async function GET(request, { params }) {
       .eq('id', id)
       .single()
 
-    if (userError || !user) {
+    if (userError) {
+      if (userError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
       return NextResponse.json({ error: `User retrieval failed: ${userError.message}` }, { status: 500 })
     }
 
@@ -93,6 +96,16 @@ export async function GET(request, { params }) {
   }
 }
 
+/**
+ * Updates a user by ID
+ * Could be used for admins to update user roles
+ * Currently not needed, but left here for future use
+ * in case we need to make a marketplace like update
+ * with multiple admins (hosts)
+ */
+// export async function PUT(request, { params }) {
+
+// }
 
 /**
  * Deletes a user by ID

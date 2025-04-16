@@ -228,8 +228,10 @@ DROP FUNCTION IF EXISTS update_timestamp() CASCADE;
 ```
 
 
-
-
+```js
+// Our supabase storage bucket name
+property-images
+```
 
 
 __* Database Seeding SQL Query *__

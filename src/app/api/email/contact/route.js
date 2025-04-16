@@ -38,11 +38,13 @@ export async function POST(request) {
         .from('properties').select(`title, main_image, price, price_description, locations(city, state, country)`)
         .eq('id', propertyid)
         .single()
-
-      if (propertyError || !property) {
-        return NextResponse.json({ error: `Property retrieval failed: ${propertyError.message}` }, { status: 500 })
-      } 
       
+      if (propertyError) {
+        if (propertyError.code === 'PGRST116') {
+          return NextResponse.json({ error: 'Property not found' }, { status: 404 })
+        }
+        return NextResponse.json({ error: `Property retrieval failed: ${propertyError.message}` }, { status: 500 })
+      }
 
       propertyDetails = {
         id: propertyid,

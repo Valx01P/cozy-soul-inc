@@ -47,8 +47,11 @@ export async function POST(request) {
       .select('*')
       .eq('email', email)
       .single()
-    
-    if (userError || !user) {
+
+    if (userError) {
+      if (userError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'User not found' }, { status: 401 })
+      }
       return NextResponse.json({ error: `User retrieval failed: ${userError.message}` }, { status: 500 })
     }
 

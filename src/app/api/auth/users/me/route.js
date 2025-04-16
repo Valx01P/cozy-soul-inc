@@ -61,9 +61,11 @@ export async function GET(request) {
       .eq('id', user_id)
       .single()
 
-    
-    if (userError || !user) {
-      return NextResponse.json({ error: `User not found: ${userError.message}` }, { status: 500 })
+    if (userError) {
+      if (userError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+      return NextResponse.json({ error: `User retrieval failed: ${userError.message}` }, { status: 500 })
     }
 
     const response = {
@@ -152,7 +154,10 @@ export async function PUT(request) {
       .select('first_name, last_name, email, email_verified, phone, phone_verified, identity_verified, profile_image, created_at, updated_at')
       .single()
     
-    if (updateError || !updatedUser) {
+    if (updateError) {
+      if (updateError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
       return NextResponse.json({ error: `Update failed: ${updateError.message}` }, { status: 500 })
     }
     
@@ -217,11 +222,14 @@ export async function DELETE(request) {
       .select('id')
       .eq('id', user_id)
       .single()
-      
-    if (userError || !user) {
-      return NextResponse.json({ error: `User retrieval failed: ${userError.message}` }, { status: 404 })
+
+    if (userError) {
+      if (userError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+      return NextResponse.json({ error: `User retrieval failed: ${userError.message}` }, { status: 500 })
     }
-    
+      
     // delete user
     const { error: deleteUserError } = await supabase
       .from('users')

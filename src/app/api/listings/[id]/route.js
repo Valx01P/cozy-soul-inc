@@ -4,27 +4,40 @@ import { verifyToken, getAuthTokens } from '@/app/lib/auth'
 import supabase from '@/app/services/supabase'
 
 /**
- * GET a single listing by ID
+ * GET a single listing by ID (ANYONE)
  * Returns detailed information about the property
  */
 export async function GET(request, { params }) {
   try {
     const { id } = await params
     
-    // Query for the property with joins for location and images
-    const { data: property, error } = await supabase
+    if (!id) {
+      return NextResponse.json({ error: 'Listing ID is required' }, { status: 400 })
+    }
+    
+    // Query for the property with joins for location, images, and availability
+    const { data: property, error: propertyError } = await supabase
       .from('properties')
       .select(`
         id, 
         host_id, 
         title, 
         description, 
-        price, 
-        price_description,
-        currency,
+        propertyavailability(
+          id,
+          start_date,
+          end_date,
+          is_available,
+          price,
+          availability_type
+        ),
         main_image, 
         side_image1, 
         side_image2,
+        propertyimages(
+          id,
+          image_url
+        ),
         number_of_guests, 
         number_of_bedrooms, 
         number_of_beds, 
@@ -45,8 +58,7 @@ export async function GET(request, { params }) {
           latitude, 
           longitude
         ),
-        propertyimages(id, image_url),
-        admins!properties_host_id_fkey(
+        users!properties_host_id_fkey(
           first_name,
           last_name,
           profile_image,
@@ -56,17 +68,18 @@ export async function GET(request, { params }) {
       .eq('id', id)
       .single()
     
-    if (error) {
-      if (error.code === 'PGRST116') {
+    if (propertyError) {
+      if (propertyError.code === 'PGRST116') {
         return NextResponse.json({ error: 'Property not found' }, { status: 404 })
       }
-      throw new Error(`Error fetching property: ${error.message}`)
+      return NextResponse.json({ error: `Failed to retrieve property: ${propertyError.message}` }, { status: 500 })
     }
     
     // Fetch amenities for this property with categories
     const { data: amenitiesData, error: amenitiesError } = await supabase
       .from('propertyamenities')
       .select(`
+        property_id,
         amenities(
           id,
           name,
@@ -77,10 +90,10 @@ export async function GET(request, { params }) {
       .eq('property_id', id)
     
     if (amenitiesError) {
-      throw new Error(`Error fetching amenities: ${amenitiesError.message}`)
+      return NextResponse.json({ error: `Error fetching amenities: ${amenitiesError.message}` }, { status: 500 })
     }
     
-    // Organize amenities by category
+    // Organize amenities by property and category
     const amenities = {}
     
     amenitiesData?.forEach(item => {
@@ -97,7 +110,7 @@ export async function GET(request, { params }) {
       })
     })
     
-    // Format the response
+    // Format the location object
     const location = {
       address: property.locations.address || `${property.locations.street}, ${property.locations.city}, ${property.locations.state}`,
       street: property.locations.street,
@@ -110,16 +123,26 @@ export async function GET(request, { params }) {
       longitude: property.locations.longitude
     }
     
+    // Get extra images
     const extraImages = property.propertyimages.map(img => img.image_url)
     
-    const formattedProperty = {
+    // Process availability data
+    const availability = property.propertyavailability.map(avail => ({
+      id: avail.id,
+      start_date: avail.start_date,
+      end_date: avail.end_date,
+      is_available: avail.is_available,
+      price: avail.price,
+      availability_type: avail.availability_type
+    }))
+    
+    // Return formatted property object
+    const response = {
       id: property.id,
       host_id: property.host_id,
       title: property.title,
       description: property.description,
-      price: property.price,
-      price_description: property.price_description,
-      currency: property.currency,
+      availability,
       main_image: property.main_image,
       side_image1: property.side_image1,
       side_image2: property.side_image2,
@@ -134,21 +157,17 @@ export async function GET(request, { params }) {
       is_active: property.is_active,
       created_at: property.created_at,
       updated_at: property.updated_at,
-      // Add host information
       host: {
-        first_name: property.admins.first_name,
-        last_name: property.admins.last_name,
-        profile_image: property.admins.profile_image,
-        host_since: new Date(property.admins.created_at).getFullYear()
+        first_name: property.users.first_name,
+        last_name: property.users.last_name,
+        profile_image: property.users.profile_image,
+        host_since: new Date(property.users.created_at).getFullYear()
       }
     }
     
-    return NextResponse.json(formattedProperty)
+    return NextResponse.json(response, { status: 200 })
   } catch (error) {
-    console.error('Get listing error:', error)
-    return NextResponse.json({ 
-      error: 'Failed to fetch listing' 
-    }, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
 
@@ -189,38 +208,213 @@ async function deleteImageFromStorage(imageUrl) {
 
 
 
-
 /**
- * PUT update a listing by ID (admin only)
- * Requires authentication and updates property, location, images and amenities
+ * PUT update a listing by ID (OWNER ONLY)
+ * Requires authentication and updates property, location, images, availability, and amenities
  * Also properly handles image deletion from storage
+ * Example Request Body:
+{
+  "title": "Updated Luxury Beachfront Villa",
+  "description": "UPDATED: Experience paradise in this stunning beachfront villa with panoramic ocean views, private beach access, and newly renovated interiors.",
+  "main_image": "https://placehold.co/1024x1024/png?text=Updated+Main+Image",
+  "side_image1": "https://placehold.co/1024x1024/png?text=Updated+Side+View+1",
+  "side_image2": "https://placehold.co/1024x1024/png?text=Updated+Side+View+2",
+  "extra_images": [
+    "https://placehold.co/1024x1024/png?text=Updated+Pool+Area",
+    "https://placehold.co/1024x1024/png?text=Updated+Master+Bedroom",
+    "https://placehold.co/1024x1024/png?text=New+Kitchen+View",
+    "https://placehold.co/1024x1024/png?text=New+Ocean+View"
+  ],
+  "location": {
+    "address": "125 Ocean Drive, Malibu, CA",
+    "street": "125 Ocean Drive",
+    "apt": "",
+    "city": "Malibu",
+    "state": "CA",
+    "zip": "90265",
+    "country": "USA",
+    "latitude": 34.0261,
+    "longitude": -118.7801
+  },
+  "number_of_guests": 10,
+  "number_of_bedrooms": 5,
+  "number_of_beds": 6,
+  "number_of_bathrooms": 5,
+  "additional_info": "UPDATED: House rules: No parties or events. Not suitable for pets. No smoking. Check-in after 3 PM, check-out before 11 AM. Additional cleaning fee applies. Now with new gourmet kitchen and expanded outdoor entertaining area.",
+  "is_active": true,
+  "availability": [
+    {
+      "start_date": "2025-07-01",
+      "end_date": "2025-07-14",
+      "is_available": true,
+      "price": 850.00,
+      "availability_type": "default"
+    },
+    {
+      "start_date": "2025-07-15",
+      "end_date": "2025-07-31",
+      "is_available": true,
+      "price": 950.00,
+      "availability_type": "default"
+    },
+    {
+      "start_date": "2025-08-01",
+      "end_date": "2025-08-14",
+      "is_available": false,
+      "price": 950.00,
+      "availability_type": "blocked"
+    },
+    {
+      "start_date": "2025-08-15",
+      "end_date": "2025-08-31",
+      "is_available": true,
+      "price": 850.00,
+      "availability_type": "default"
+    },
+    {
+      "start_date": "2025-09-01",
+      "end_date": "2025-09-30",
+      "is_available": true,
+      "price": 750.00,
+      "availability_type": "default"
+    }
+  ],
+  "amenities": {
+    "Scenic Views": [
+      {"name": "Beach view"},
+      {"name": "Ocean view"},
+      {"name": "Mountain view"}
+    ],
+    "Bathroom": [
+      {"name": "Hot water"},
+      {"name": "Bathtub"},
+      {"name": "Shower gel"},
+      {"name": "Shampoo"},
+      {"name": "Conditioner"},
+      {"name": "Hair dryer"}
+    ],
+    "Bedroom and laundry": [
+      {"name": "Washer"},
+      {"name": "Dryer"},
+      {"name": "Bed linens"},
+      {"name": "Extra pillows and blankets"},
+      {"name": "Hangers"}
+    ],
+    "Entertainment": [
+      {"name": "TV"},
+      {"name": "Bluetooth sound system"},
+      {"name": "Books and reading material"}
+    ],
+    "Heating and cooling": [
+      {"name": "Air conditioning"},
+      {"name": "Ceiling fan"},
+      {"name": "Central heating"}
+    ],
+    "Home safety": [
+      {"name": "Smoke alarm"},
+      {"name": "Carbon monoxide alarm"},
+      {"name": "Fire extinguisher"},
+      {"name": "First aid kit"}
+    ],
+    "Internet and office": [
+      {"name": "Wifi"},
+      {"name": "Dedicated workspace"}
+    ],
+    "Kitchen and dining": [
+      {"name": "Kitchen"},
+      {"name": "Refrigerator"},
+      {"name": "Dishwasher"},
+      {"name": "Microwave"},
+      {"name": "Coffee maker"},
+      {"name": "Wine glasses"},
+      {"name": "Dining table"},
+      {"name": "Blender"},
+      {"name": "Toaster"}
+    ],
+    "Location features": [
+      {"name": "Beach access - Beachfront"},
+      {"name": "Waterfront"},
+      {"name": "Free resort access"}
+    ],
+    "Outdoor": [
+      {"name": "Outdoor furniture"},
+      {"name": "Outdoor dining area"},
+      {"name": "Patio or balcony"},
+      {"name": "Beach essentials"},
+      {"name": "Private backyard - Fully fenced"}
+    ],
+    "Parking and facilities": [
+      {"name": "Free parking on premises"},
+      {"name": "Pool"},
+      {"name": "Shared hot tub"}
+    ],
+    "Services": [
+      {"name": "Self check-in"},
+      {"name": "Smart lock"},
+      {"name": "Cleaning available during stay"}
+    ]
+  }
+}
  */
 export async function PUT(request, { params }) {
   try {
-    const { id } = await params
+    const { id } = params
     
-    // Verify the user's JWT token (admin only)
+    if (!id) {
+      return NextResponse.json({ error: 'Listing ID is required' }, { status: 400 })
+    }
+    
     const { accessToken } = await getAuthTokens(request)
     
     if (!accessToken) {
-      return NextResponse.json({ 
-        error: 'Unauthorized' 
-      }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const payload = await verifyToken(accessToken)
+
+    /**
+     * @example Payload:
+     * {
+     *   "user_id": "123",
+     *   "first_name": "John",
+     *   "last_name": "Doe",
+     *   "email": "user@example.com",
+     *   "role": "guest"
+     * }
+     */
+    
+    if (!payload || !payload.user_id) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    if (payload.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
-    const payload = await verifyToken(accessToken)
+    // Check if user is admin and owns the property
+    const { data: property, error: propertyCheckError } = await supabase
+      .from('properties')
+      .select('host_id, location_id, main_image, side_image1, side_image2')
+      .eq('id', id)
+      .single()
     
-    if (!payload || !payload.admin_id) {
-      return NextResponse.json({ 
-        error: 'Unauthorized' 
-      }, { status: 401 })
+    if (propertyCheckError) {
+      if (propertyCheckError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Property not found' }, { status: 404 })
+      }
+      return NextResponse.json({ error: `Failed to retrieve property: ${propertyCheckError.message}` }, { status: 500 })
+    }
+    
+    // Verify the user is the owner of this property
+    if (property.host_id !== payload.user_id) {
+      return NextResponse.json({ error: 'Forbidden - you are not authorized to update this listing' }, { status: 403 })
     }
     
     // Parse request body
     const data = await request.json()
     
     // Validate required fields
-    const requiredFields = ['title', 'price', 'price_description', 'location', 'number_of_guests', 'number_of_bedrooms', 'number_of_beds', 'number_of_bathrooms']
+    const requiredFields = ['title', 'location', 'number_of_guests', 'number_of_bedrooms', 'number_of_beds', 'number_of_bathrooms']
     
     for (const field of requiredFields) {
       if (!data[field]) {
@@ -234,24 +428,8 @@ export async function PUT(request, { params }) {
     const locationFields = ['street', 'city', 'state', 'country', 'latitude', 'longitude']
     for (const field of locationFields) {
       if (!data.location[field]) {
-        return NextResponse.json({ 
-          error: `Missing required location field: ${field}` 
-        }, { status: 400 })
+        return NextResponse.json({ error: `Missing required location field: ${field}` }, { status: 400 })
       }
-    }
-    
-    // Verify property exists and get current property data
-    const { data: existingProperty, error: propertyError } = await supabase
-      .from('properties')
-      .select('location_id, main_image, side_image1, side_image2')
-      .eq('id', id)
-      .single()
-    
-    if (propertyError) {
-      if (propertyError.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Property not found' }, { status: 404 })
-      }
-      throw new Error(`Error fetching property: ${propertyError.message}`)
     }
     
     // Get current extra images
@@ -261,7 +439,7 @@ export async function PUT(request, { params }) {
       .eq('property_id', id)
     
     if (imagesError) {
-      throw new Error(`Error fetching property images: ${imagesError.message}`)
+      return NextResponse.json({ error: `Error fetching property images: ${imagesError.message}` }, { status: 500 })
     }
     
     // 1. Update the location
@@ -278,23 +456,23 @@ export async function PUT(request, { params }) {
         latitude: data.location.latitude,
         longitude: data.location.longitude
       })
-      .eq('id', existingProperty.location_id)
+      .eq('id', property.location_id)
     
     if (locationError) {
-      throw new Error(`Error updating location: ${locationError.message}`)
+      return NextResponse.json({ error: `Error updating location: ${locationError.message}` }, { status: 500 })
     }
     
     // 2. Handle main image and side images - delete from storage if they've changed
-    if (existingProperty.main_image && existingProperty.main_image !== data.main_image) {
-      await deleteImageFromStorage(existingProperty.main_image)
+    if (property.main_image && property.main_image !== data.main_image) {
+      await deleteImageFromStorage(property.main_image)
     }
     
-    if (existingProperty.side_image1 && existingProperty.side_image1 !== data.side_image1) {
-      await deleteImageFromStorage(existingProperty.side_image1)
+    if (property.side_image1 && property.side_image1 !== data.side_image1) {
+      await deleteImageFromStorage(property.side_image1)
     }
     
-    if (existingProperty.side_image2 && existingProperty.side_image2 !== data.side_image2) {
-      await deleteImageFromStorage(existingProperty.side_image2)
+    if (property.side_image2 && property.side_image2 !== data.side_image2) {
+      await deleteImageFromStorage(property.side_image2)
     }
     
     // 3. Update the property
@@ -303,9 +481,6 @@ export async function PUT(request, { params }) {
       .update({
         title: data.title,
         description: data.description || '',
-        price: data.price,
-        price_description: data.price_description,
-        currency: data.currency || 'USD',
         main_image: data.main_image || null,
         side_image1: data.side_image1 || null,
         side_image2: data.side_image2 || null,
@@ -320,7 +495,7 @@ export async function PUT(request, { params }) {
       .eq('id', id)
     
     if (updatePropertyError) {
-      throw new Error(`Error updating property: ${updatePropertyError.message}`)
+      return NextResponse.json({ error: `Error updating property: ${updatePropertyError.message}` }, { status: 500 })
     }
     
     // 4. Handle extra images
@@ -343,7 +518,7 @@ export async function PUT(request, { params }) {
         .eq('property_id', id)
       
       if (deleteImagesError) {
-        throw new Error(`Error deleting existing images: ${deleteImagesError.message}`)
+        return NextResponse.json({ error: `Error deleting existing images: ${deleteImagesError.message}` }, { status: 500 })
       }
       
       // Add new images if provided
@@ -358,12 +533,55 @@ export async function PUT(request, { params }) {
           .insert(extraImagesData)
         
         if (imagesError) {
-          throw new Error(`Error adding extra images: ${imagesError.message}`)
+          return NextResponse.json({ error: `Error adding extra images: ${imagesError.message}` }, { status: 500 })
         }
       }
     }
     
-    // 5. Handle amenities if provided - delete existing and add new ones
+    // 5. Handle availability if provided
+    if (data.availability && Array.isArray(data.availability)) {
+      // Validate availability data
+      for (const [index, avail] of data.availability.entries()) {
+        const availFields = ['start_date', 'end_date', 'price', 'is_available']
+        for (const field of availFields) {
+          if (avail[field] === undefined) {
+            return NextResponse.json({
+              error: `Missing required availability field: ${field} at index ${index}`
+            }, { status: 400 })
+          }
+        }
+      }
+      
+      // Delete existing availability ranges
+      const { error: deleteAvailError } = await supabase
+        .from('propertyavailability')
+        .delete()
+        .eq('property_id', id)
+      
+      if (deleteAvailError) {
+        return NextResponse.json({ error: `Error deleting existing availability: ${deleteAvailError.message}` }, { status: 500 })
+      }
+      
+      // Insert new availability ranges
+      const availabilityData = data.availability.map(avail => ({
+        property_id: id,
+        start_date: avail.start_date,
+        end_date: avail.end_date,
+        is_available: avail.is_available,
+        price: avail.price,
+        availability_type: avail.availability_type || 'default'
+      }))
+      
+      const { error: availabilityError } = await supabase
+        .from('propertyavailability')
+        .insert(availabilityData)
+      
+      if (availabilityError) {
+        return NextResponse.json({ error: `Error adding availability: ${availabilityError.message}` }, { status: 500 })
+      }
+    }
+    
+    // 6. Handle amenities if provided - delete existing and add new ones
     if (data.amenities && typeof data.amenities === 'object') {
       // Delete existing amenities
       const { error: deleteAmenitiesError } = await supabase
@@ -372,7 +590,7 @@ export async function PUT(request, { params }) {
         .eq('property_id', id)
       
       if (deleteAmenitiesError) {
-        throw new Error(`Error deleting existing amenities: ${deleteAmenitiesError.message}`)
+        return NextResponse.json({ error: `Error deleting existing amenities: ${deleteAmenitiesError.message}` }, { status: 500 })
       }
       
       // First, fetch all categories to get the category IDs
@@ -381,7 +599,7 @@ export async function PUT(request, { params }) {
         .select('id, name')
       
       if (categoriesError) {
-        throw new Error(`Error fetching amenity categories: ${categoriesError.message}`)
+        return NextResponse.json({ error: `Error fetching amenity categories: ${categoriesError.message}` }, { status: 500 })
       }
       
       const categoryMap = {}
@@ -395,7 +613,7 @@ export async function PUT(request, { params }) {
         .select('id, name, category_id')
       
       if (amenitiesError) {
-        throw new Error(`Error fetching amenities: ${amenitiesError.message}`)
+        return NextResponse.json({ error: `Error fetching amenities: ${amenitiesError.message}` }, { status: 500 })
       }
       
       // Process each amenity category from the request
@@ -455,7 +673,7 @@ export async function PUT(request, { params }) {
           .insert(propertyAmenitiesData)
         
         if (insertError) {
-          throw new Error(`Error adding amenities: ${insertError.message}`)
+          return NextResponse.json({ error: `Error adding amenities: ${insertError.message}` }, { status: 500 })
         }
       }
     }
@@ -464,12 +682,10 @@ export async function PUT(request, { params }) {
       success: true,
       message: 'Property updated successfully',
       propertyId: id
-    })
+    }, { status: 200 })
+    
   } catch (error) {
-    console.error('Update listing error:', error)
-    return NextResponse.json({ 
-      error: 'Failed to update listing' 
-    }, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
 
@@ -484,39 +700,52 @@ export async function PUT(request, { params }) {
 
 
 
-
-
-
 /**
- * DELETE a listing by ID (admin only)
+ * DELETE a listing by ID (OWNER ONLY)
  * Requires authentication and removes property and all related data
  * Also deletes images from Supabase storage
  */
 export async function DELETE(request, { params }) {
   try {
-    const { id } = await params
+    const { id } = params
     
-    // Verify the user's JWT token (admin only)
+    if (!id) {
+      return NextResponse.json({ error: 'Listing ID is required' }, { status: 400 })
+    }
+    
+    // Verify the user's JWT token
     const { accessToken } = await getAuthTokens(request)
     
     if (!accessToken) {
-      return NextResponse.json({ 
-        error: 'Unauthorized' 
-      }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
+
     const payload = await verifyToken(accessToken)
+
+    /**
+     * @example Payload:
+     * {
+     *   "user_id": "123",
+     *   "first_name": "John",
+     *   "last_name": "Doe",
+     *   "email": "user@example.com",
+     *   "role": "guest"
+     * }
+     */
     
-    if (!payload || !payload.admin_id) {
-      return NextResponse.json({ 
-        error: 'Unauthorized' 
-      }, { status: 401 })
+    if (!payload || !payload.user_id) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
+
+    if (payload.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     
-    // Get the property data including images before deleting
+    // Get the property data including images and check ownership before deleting
     const { data: property, error: propertyError } = await supabase
       .from('properties')
-      .select('location_id, main_image, side_image1, side_image2')
+      .select('host_id, location_id, main_image, side_image1, side_image2')
       .eq('id', id)
       .single()
     
@@ -524,7 +753,14 @@ export async function DELETE(request, { params }) {
       if (propertyError.code === 'PGRST116') {
         return NextResponse.json({ error: 'Property not found' }, { status: 404 })
       }
-      throw new Error(`Error fetching property: ${propertyError.message}`)
+      return NextResponse.json({ error: `Error fetching property: ${propertyError.message}` }, { status: 500 })
+    }
+    
+    // Verify the user is the owner of this property
+    if (property.host_id !== payload.user_id) {
+      return NextResponse.json({ 
+        error: 'Forbidden - you are not authorized to delete this listing' 
+      }, { status: 403 })
     }
     
     // Get extra images
@@ -534,7 +770,7 @@ export async function DELETE(request, { params }) {
       .eq('property_id', id)
     
     if (imagesError) {
-      throw new Error(`Error fetching property images: ${imagesError.message}`)
+      return NextResponse.json({ error: `Error fetching property images: ${imagesError.message}` }, { status: 500 })
     }
     
     // Delete all images from storage
@@ -554,54 +790,63 @@ export async function DELETE(request, { params }) {
       await deleteImageFromStorage(img.image_url)
     }
     
-    // Delete related propertyamenities (junction table)
+    // Delete related data in the correct order to respect foreign key constraints
+    
+    // 1. Delete propertyavailability
+    const { error: availabilityError } = await supabase
+      .from('propertyavailability')
+      .delete()
+      .eq('property_id', id)
+    
+    if (availabilityError) {
+      return NextResponse.json({ error: `Error deleting property availability: ${availabilityError.message}` }, { status: 500 })
+    }
+    
+    // 2. Delete propertyamenities (junction table)
     const { error: amenitiesError } = await supabase
       .from('propertyamenities')
       .delete()
       .eq('property_id', id)
     
     if (amenitiesError) {
-      throw new Error(`Error deleting property amenities: ${amenitiesError.message}`)
+      return NextResponse.json({ error: `Error deleting property amenities: ${amenitiesError.message}` }, { status: 500 })
     }
     
-    // Delete related propertyimages
+    // 3. Delete propertyimages
     const { error: deleteImagesError } = await supabase
       .from('propertyimages')
       .delete()
       .eq('property_id', id)
     
     if (deleteImagesError) {
-      throw new Error(`Error deleting property images: ${deleteImagesError.message}`)
+      return NextResponse.json({ error: `Error deleting property images: ${deleteImagesError.message}` }, { status: 500 })
     }
     
-    // Delete the property
+    // 4. Delete the property
     const { error: deletePropertyError } = await supabase
       .from('properties')
       .delete()
       .eq('id', id)
     
     if (deletePropertyError) {
-      throw new Error(`Error deleting property: ${deletePropertyError.message}`)
+      return NextResponse.json({ error: `Error deleting property: ${deletePropertyError.message}` }, { status: 500 })
     }
     
-    // Delete the location
+    // 5. Delete the location
     const { error: locationError } = await supabase
       .from('locations')
       .delete()
       .eq('id', property.location_id)
     
     if (locationError) {
-      throw new Error(`Error deleting location: ${locationError.message}`)
+      return NextResponse.json({ error: `Error deleting location: ${locationError.message}` }, { status: 500 })
     }
     
     return NextResponse.json({
       success: true,
       message: 'Property deleted successfully'
-    })
+    }, { status: 200 })
   } catch (error) {
-    console.error('Delete listing error:', error)
-    return NextResponse.json({ 
-      error: 'Failed to delete listing' 
-    }, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

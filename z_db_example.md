@@ -204,9 +204,6 @@ CREATE TABLE identityverifications (
 ```
 
 
-
-
-
 __* Drop Database *__
 ```sql
 -- This will forcibly drop all tables regardless of dependencies
@@ -231,7 +228,10 @@ DROP FUNCTION IF EXISTS update_timestamp() CASCADE;
 ```
 
 
-
+```js
+// Our supabase storage bucket name
+property-images
+```
 
 
 __* Database Seeding SQL Query *__

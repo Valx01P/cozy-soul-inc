@@ -62,10 +62,12 @@ export async function GET(request) {
       .from('users')
       .select('*')
 
-    if (usersError || !users) {
-      return NextResponse.json({ error: `Users not found: ${usersError.message}` }, { status: 500 })
+    if (usersError) {
+      if (usersError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Users not found' }, { status: 404 })
+      }
+      return NextResponse.json({ error: `Users retrieval failed: ${usersError.message}` }, { status: 500 })
     }
-
 
     const response = [
       ...users.map(user => ({
