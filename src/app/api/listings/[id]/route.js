@@ -358,7 +358,7 @@ async function deleteImageFromStorage(imageUrl) {
  */
 export async function PUT(request, { params }) {
   try {
-    const { id } = params
+    const { id } = await params
     
     if (!id) {
       return NextResponse.json({ error: 'Listing ID is required' }, { status: 400 })
@@ -707,7 +707,7 @@ export async function PUT(request, { params }) {
  */
 export async function DELETE(request, { params }) {
   try {
-    const { id } = params
+    const { id } = await params
     
     if (!id) {
       return NextResponse.json({ error: 'Listing ID is required' }, { status: 400 })

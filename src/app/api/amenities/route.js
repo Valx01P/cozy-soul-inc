@@ -12,14 +12,22 @@ export async function GET() {
       .from('amenitiescategories')
       .select('id, name')
 
-    if (amenityCategoryError || !categories) {
-      return NextResponse.json({ message: `Error retrieving categories, ${amenityCategoryError.message}` }, { status: 500 })
+    if (amenityCategoryError) {
+      if (amenityCategoryError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Categories not found' }, { status: 404 })
+      }
+      return NextResponse.json({ error: `Categories retrieval failed: ${amenityCategoryError.message}` }, { status: 500 })
     }
 
-    const { data: amenities, error: amenityError } = await supabase.from('amenities').select('id, name, svg, amenitiescategories(id, name)')
+    const { data: amenities, error: amenityError } = await supabase
+      .from('amenities')
+      .select('id, name, svg, amenitiescategories(id, name)')
 
-    if (amenityError || !amenities) {
-      return NextResponse.json({ message: `Error retrieving amenities, ${amenityError.message}` }, { status: 500 })
+    if (amenityError) {
+      if (amenityError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Amenities not found' }, { status: 404 })
+      }
+      return NextResponse.json({ error: `Amenities retrieval failed: ${amenityError.message}` }, { status: 500 })
     }
 
     const response = {}

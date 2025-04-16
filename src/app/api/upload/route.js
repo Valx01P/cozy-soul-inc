@@ -27,13 +27,28 @@ export async function POST(request) {
     const { accessToken } = await getAuthTokens(request)
 
     if (!accessToken) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
+
     const payload = await verifyToken(accessToken)
+
+    /**
+     * @example Payload:
+     * {
+     *   "user_id": "123",
+     *   "first_name": "John",
+     *   "last_name": "Doe",
+     *   "email": "user@example.com",
+     *   "role": "guest"
+     * }
+     */
     
-    if (!payload || !payload.admin_id) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+    if (!payload || !payload.user_id) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    if (payload.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     // Process the multipart form data
@@ -41,7 +56,7 @@ export async function POST(request) {
     const files = formData.getAll('images')
     
     if (!files || files.length === 0) {
-      return NextResponse.json({ message: 'No files provided' }, { status: 400 })
+      return NextResponse.json({ error: 'No files provided' }, { status: 400 })
     }
 
     // Upload each file to Supabase storage
@@ -70,7 +85,7 @@ export async function POST(request) {
         .getPublicUrl(fileName)
 
       if (error) {
-        throw new Error(`Failed to get public URL, ${error.message}`)
+        return NextResponse.json({ error: `Failed to get public URL: ${error.message}` }, { status: 500 })
       }
 
       return data.publicUrl
@@ -80,7 +95,7 @@ export async function POST(request) {
 
     return NextResponse.json(urls, { status: 200 })
   } catch (error) {
-    return NextResponse.json(error.message, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
 
@@ -103,20 +118,35 @@ export async function DELETE(request) {
     const { accessToken } = await getAuthTokens(request)
 
     if (!accessToken) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
+
     const payload = await verifyToken(accessToken)
+
+    /**
+     * @example Payload:
+     * {
+     *   "user_id": "123",
+     *   "first_name": "John",
+     *   "last_name": "Doe",
+     *   "email": "user@example.com",
+     *   "role": "guest"
+     * }
+     */
     
-    if (!payload || !payload.admin_id) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+    if (!payload || !payload.user_id) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    if (payload.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     // Get the file path from the request body
     const { filepath } = await request.json()
     
     if (!filepath) {
-      return NextResponse.json({ message: 'File path is required' }, { status: 400 })
+      return NextResponse.json({ error: 'File path is required' }, { status: 400 })
     }
 
     // Extract just the filename from the URL or path
@@ -128,7 +158,7 @@ export async function DELETE(request) {
       .remove([fileName])
 
     if (error) {
-      throw new Error(`Failed to delete file, ${error.message}`)
+      return NextResponse.json({ error: `Failed to delete file: ${error.message}` }, { status: 500 })
     }
 
     const response = {
@@ -137,6 +167,6 @@ export async function DELETE(request) {
 
     return NextResponse.json(response, { status: 200 })
   } catch (error) {
-    return NextResponse.json(error.message, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
