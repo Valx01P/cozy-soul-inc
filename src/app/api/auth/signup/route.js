@@ -90,7 +90,12 @@ export async function POST(request) {
       last_name: newUser.last_name,
       email: newUser.email,
       phone: newUser.phone,
-      profile_image: newUser.profile_image
+      email_verified: newUser.email_verified,
+      phone_verified: newUser.phone_verified,
+      identity_verified: newUser.identity_verified,
+      profile_image: newUser.profile_image,
+      created_at: newUser.created_at,
+      updated_at: newUser.updated_at
     }
 
     return NextResponse.json(response, { status: 201 })

@@ -39,13 +39,10 @@ export async function POST(request) {
         .eq('id', propertyid)
         .single()
 
-      if (propertyError) {
-        return NextResponse.json({ error: propertyError.message }, { status: 500 })
+      if (propertyError || !property) {
+        return NextResponse.json({ error: `Property retrieval failed: ${propertyError.message}` }, { status: 500 })
       } 
       
-      if (!property) {
-        return NextResponse.json({ error: 'Property not found' }, { status: 404 })
-      }
 
       propertyDetails = {
         id: propertyid,
@@ -72,7 +69,7 @@ export async function POST(request) {
     
 
     if (emailError) {
-      return NextResponse.json({ message: `Failed to send email ${emailError.message}` }, { status: 500 })
+      return NextResponse.json({ error: `Failed to send email: ${emailError.message}` }, { status: 500 })
     }
 
     const response = {

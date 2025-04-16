@@ -1,4 +1,3 @@
-// src/app/api/amenities/route.js
 import { NextResponse } from 'next/server'
 import supabase from '@/app/services/supabase'
 
@@ -9,20 +8,18 @@ import supabase from '@/app/services/supabase'
 export async function GET() {
   try {
     // Get all categories
-    const { data: categories, error: acError } = await supabase.from('amenitiescategories').select('id, name')
+    const { data: categories, error: amenityCategoryError } = await supabase
+      .from('amenitiescategories')
+      .select('id, name')
 
-    if (acError) {
-      throw new Error(`Error fetching categories, ${acError.message}`)
-    } else if (!categories || categories.length === 0) {
-      return NextResponse.json({ message: 'No categories found' }, { status: 404 })
+    if (amenityCategoryError || !categories) {
+      return NextResponse.json({ message: `Error retrieving categories, ${amenityCategoryError.message}` }, { status: 500 })
     }
 
-    const { data: amenities, error: aError } = await supabase.from('amenities').select('id, name, svg, amenitiescategories(id, name)')
+    const { data: amenities, error: amenityError } = await supabase.from('amenities').select('id, name, svg, amenitiescategories(id, name)')
 
-    if (aError) {
-      throw new Error(`Error fetching amenities, ${aError.message}`)
-    } else if (!amenities || amenities.length === 0) {
-      return NextResponse.json({ message: 'No amenities found' }, { status: 404 })
+    if (amenityError || !amenities) {
+      return NextResponse.json({ message: `Error retrieving amenities, ${amenityError.message}` }, { status: 500 })
     }
 
     const response = {}
@@ -39,10 +36,8 @@ export async function GET() {
       })
     })
 
-
     return NextResponse.json(response, {status: 200})
-
   } catch (error) {
-    return NextResponse.json(error.message, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

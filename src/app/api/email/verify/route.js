@@ -7,7 +7,7 @@ import { generateRandomCode } from '@/app/lib/utils'
 
 /**
  *
-CREATE TABLE Users (
+CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   first_name VARCHAR(255) NOT NULL,
   last_name VARCHAR(255) NOT NULL,
@@ -17,8 +17,11 @@ CREATE TABLE Users (
   email_verified BOOLEAN DEFAULT FALSE,
   role VARCHAR(50) NOT NULL DEFAULT 'guest', -- 'guest', 'admin'
   phone VARCHAR(20),
-  profile_image VARCHAR(255),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  phone_verified BOOLEAN DEFAULT FALSE,
+  identity_verified BOOLEAN DEFAULT FALSE,
+  profile_image VARCHAR(255) DEFAULT 'https://placehold.co/1024x1024/png?text=User',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE EmailVerificationCodes (
@@ -68,23 +71,23 @@ export async function POST(request) {
 
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes from now
 
-    const { error: dbError } = await supabase
+    const { error: verifyError } = await supabase
       .from('emailverificationcodes')
       .insert({ user_id, code: verificationCode, expires_at: expiresAt })
 
-    if (dbError) {
-      return NextResponse.json({ error: dbError.message }, { status: 500 })
+    if (verifyError) {
+      return NextResponse.json({ error: `Failed to insert verification code: ${verifyError.message}` }, { status: 500 })
     }
 
     const { error: emailError } = await resend.emails.send({
-      from: 'Cozy Soul Inc <noreplay@scriptphi.com>',
+      from: 'Cozy Soul Inc <noreply@scriptphi.com>',
       to: email,
       subject: 'Email Verification Code',
       react: VerifyCodeEmail({ verificationCode, first_name, last_name })
     })
 
     if (emailError) {
-      return NextResponse.json({ error: emailError.message }, { status: 500 })
+      return NextResponse.json({ error: `Failed to send email: ${emailError.message}` }, { status: 500 })
     }
 
     const response = {

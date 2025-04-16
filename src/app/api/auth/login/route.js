@@ -48,14 +48,10 @@ export async function POST(request) {
       .eq('email', email)
       .single()
     
-    if (userError) {
-      return NextResponse.json({ error: userError.message }, { status: 500 })
+    if (userError || !user) {
+      return NextResponse.json({ error: `User retrieval failed: ${userError.message}` }, { status: 500 })
     }
-    
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-        
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
@@ -82,7 +78,12 @@ export async function POST(request) {
       last_name: user.last_name,
       email: user.email,
       phone: user.phone,
-      profile_image: user.profile_image
+      email_verified: user.email_verified,
+      phone_verified: user.phone_verified,
+      identity_verified: user.identity_verified,
+      profile_image: user.profile_image,
+      created_at: user.created_at,
+      updated_at: user.updated_at
     }
     
     return NextResponse.json(response, { status: 200 })
