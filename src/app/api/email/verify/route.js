@@ -5,6 +5,10 @@ import VerifyCodeEmail from '@/app/components/emails/VerifyCodeEmail'
 import { verifyToken, getAuthTokens } from '@/app/lib/auth'
 import { generateRandomCode } from '@/app/lib/utils'
 
+// TODO - Update the motherfucking emails with better edge case checks and error handling
+// TODO - Do more checks based on email verification and if emails already exist so you can update
+// TODO - them accordingly
+
 /**
  *
 CREATE TABLE users (
