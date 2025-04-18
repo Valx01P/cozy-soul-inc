@@ -1,6 +1,6 @@
 'use client';
 
-import react from "react";
+import react from "react"
 import Loading from "../components/site/Loading"
 import AdminNavbar from '../components/admin/AdminNav'
 

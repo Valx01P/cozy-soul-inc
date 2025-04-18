@@ -13,10 +13,8 @@ const authService = {
       "first_name": "John",
       "last_name": "Doe",
       "email": "example@gmail.com",
-      "phone": "1234567890",
       "role": "guest",
       "email_verified": false,
-      "phone_verified": false,
       "identity_verified": false,
       "profile_image": "https://example.com/profile.jpg",
       "created_at": "2023-10-01T12:00:00Z",
@@ -55,7 +53,7 @@ const authService = {
   /*
     @requires
     {
-      "redirectTo": "/dashboard"
+      "redirectTo": "/"
     }
     
     @returns
@@ -75,6 +73,7 @@ const authService = {
       throw error;
     }
   },
+
 
   /*
     @requires
@@ -116,7 +115,6 @@ const authService = {
       "first_name": "John",
       "last_name": "Doe",
       "email": "example@gmail.com",
-      "phone": "1234567890",
       "password": "password123"
     }
 
@@ -126,10 +124,8 @@ const authService = {
       "first_name": "John",
       "last_name": "Doe",
       "email": "example@gmail.com",
-      "phone": "1234567890",
       "role": "guest",
       "email_verified": false,
-      "phone_verified": false,
       "identity_verified": false,
       "profile_image": "https://example.com/profile.jpg",
       "created_at": "2023-10-01T12:00:00Z",
@@ -177,10 +173,8 @@ const authService = {
       "first_name": "John",
       "last_name": "Doe",
       "email": "example@gmail.com",
-      "phone": "1234567890",
       "role": "guest",
       "email_verified": true,
-      "phone_verified": false,
       "identity_verified": false,
       "profile_image": "https://example.com/profile.jpg",
       "created_at": "2023-10-01T12:00:00Z",

@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -10,13 +10,15 @@ import { Eye, EyeOff } from 'lucide-react'
 export default function LoginPage() {
   const router = useRouter()
   const { login, googleLogin, isAuthenticated, isLoading, error, clearError } = useAuthStore()
-  const { errorMessage } = useGoogleAuth({ successRedirect: '/dashboard' })
+  // Our simplified hook manages OAuth errors and state
+  const { errorMessage } = useGoogleAuth({ successRedirect: '/' })
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   
+  // Redirect when authenticated
   useEffect(() => {
-    if (isAuthenticated) router.push('/dashboard')
+    if (isAuthenticated) router.push('/')
   }, [isAuthenticated, router])
 
   const handleSubmit = async (e) => {
@@ -29,6 +31,11 @@ export default function LoginPage() {
     }
   }
 
+  // Handle Google login - now much simpler
+  const handleGoogleLogin = () => {
+    googleLogin('/')
+  }
+
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Login form */}
@@ -38,6 +45,7 @@ export default function LoginPage() {
             <h2 className="text-2xl font-bold text-gray-900">Sign in</h2>
           </div>
           
+          {/* Error message handling - now using our centralized error system */}
           {(error || errorMessage) && (
             <div className="bg-red-50 border-l-4 border-[var(--primary-red)] p-3 rounded">
               <p className="text-sm text-red-700">{error || errorMessage}</p>
@@ -45,6 +53,7 @@ export default function LoginPage() {
           )}
           
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email input */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
               <input
@@ -57,6 +66,7 @@ export default function LoginPage() {
               />
             </div>
             
+            {/* Password input with toggle visibility */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
               <div className="relative">
@@ -93,6 +103,7 @@ export default function LoginPage() {
             </button>
           </form>
           
+          {/* Or separator */}
           <div>
             <div className="relative my-4">
               <div className="absolute inset-0 flex items-center">
@@ -103,8 +114,9 @@ export default function LoginPage() {
               </div>
             </div>
             
+            {/* Google login button - now using our simplified method */}
             <button
-              onClick={() => googleLogin('/dashboard')}
+              onClick={handleGoogleLogin}
               disabled={isLoading}
               className="w-full p-2 border rounded flex justify-center items-center gap-2"
             >
@@ -118,6 +130,7 @@ export default function LoginPage() {
             </button>
           </div>
           
+          {/* Sign up link */}
           <div className="text-center">
             <p className="text-sm text-gray-600">
               No account?{' '}

@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
@@ -26,10 +26,8 @@ const useAuthStore = create(
               first_name: userData.first_name,
               last_name: userData.last_name,
               email: userData.email,
-              phone: userData.phone,
               role: userData.role,
               email_verified: userData.email_verified,
-              phone_verified: userData.phone_verified,
               identity_verified: userData.identity_verified,
               profile_image: userData.profile_image,
               created_at: userData.created_at,
@@ -48,27 +46,16 @@ const useAuthStore = create(
       
       googleLogin: (redirectTo = '/') => {
         set({ isLoading: true, error: null })
-        
-        try {
-          authService.googleLogin(redirectTo)
-          
-          // Note: We don't update the state here because we're redirecting to Google
-          // The state will be updated after redirect back via checkAuth
-          
-          return true
-        } catch (error) {
-          set({ error: error.message, isLoading: false })
-          throw error
-        }
+        authService.googleLogin(redirectTo)
+        // No need for try/catch since we're redirecting
       },
       
       handleGoogleCallback: async () => {
         // This is called after returning from Google OAuth
-        // Immediately check auth status to update user state
-        await get().checkAuth()
-        return true
+        // Check auth status to update user state
+        return await get().checkAuth()
       },
-      
+
       signup: async (signUpData) => {
         set({ isLoading: true, error: null })
         
@@ -81,10 +68,8 @@ const useAuthStore = create(
               first_name: user.first_name,
               last_name: user.last_name,
               email: user.email,
-              phone: user.phone,
               role: user.role,
               email_verified: user.email_verified,
-              phone_verified: user.phone_verified,
               identity_verified: user.identity_verified,
               profile_image: user.profile_image,
               created_at: user.created_at,
@@ -138,10 +123,8 @@ const useAuthStore = create(
               first_name: userData.first_name,
               last_name: userData.last_name,
               email: userData.email,
-              phone: userData.phone,
               role: userData.role,
               email_verified: userData.email_verified,
-              phone_verified: userData.phone_verified,
               identity_verified: userData.identity_verified,
               profile_image: userData.profile_image,
               created_at: userData.created_at,

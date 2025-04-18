@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import Listings from "../components/minimal/site/Listings"
 import Hero from "../components/minimal/site/Hero"

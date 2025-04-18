@@ -12,8 +12,6 @@ CREATE TABLE users (
   password TEXT, -- Required for password-based auth
   email_verified BOOLEAN DEFAULT FALSE,
   role VARCHAR(50) NOT NULL DEFAULT 'guest', -- 'guest', 'admin'
-  phone VARCHAR(20),
-  phone_verified BOOLEAN DEFAULT FALSE,
   identity_verified BOOLEAN DEFAULT FALSE,
   profile_image VARCHAR(255) DEFAULT 'https://placehold.co/1024x1024/png?text=User',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -36,7 +34,6 @@ CREATE TABLE users (
     "email": "john.doe@example.com",
     "phone": "123-456-7890",
     "email_verified": false,
-    "phone_verified": false,
     "identity_verified": false,
     "profile_image": "https://example.com/profile.jpg",
     "created_at": "2023-10-01T12:00:00Z",
@@ -69,7 +66,6 @@ export async function GET(request) {
      *   "email": "user@example.com",
      *   "role": "guest",
      *   "email_verified": false,
-     *   "phone_verified": false,
      *   "identity_verified": false
      * }
      */
@@ -82,7 +78,7 @@ export async function GET(request) {
 
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('first_name, last_name, email, email_verified, phone, phone_verified, identity_verified, profile_image, created_at, updated_at')
+      .select('*')
       .eq('id', user_id)
       .single()
 
@@ -97,10 +93,8 @@ export async function GET(request) {
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,
-      phone: user.phone,
       role: user.role,
       email_verified: user.email_verified,
-      phone_verified: user.phone_verified,
       identity_verified: user.identity_verified,
       profile_image: user.profile_image,
       created_at: user.created_at,
@@ -133,10 +127,8 @@ export async function GET(request) {
     "first_name": "John",
     "last_name": "Doe",
     "email": "example@gmail.com",
-    "phone": "1234567890",
     "role": "guest",
     "email_verified": false,
-    "phone_verified": false,
     "identity_verified": false,
     "profile_image": "https://example.com/profile.jpg",
     "created_at": "2023-10-01T12:00:00Z",
@@ -169,7 +161,6 @@ export async function PUT(request) {
      *   "email": "user@example.com",
      *   "role": "guest",
      *   "email_verified": false,
-     *   "phone_verified": false,
      *   "identity_verified": false
      * }
      */
@@ -203,7 +194,7 @@ export async function PUT(request) {
       .from('users')
       .update(updateObject)
       .eq('id', payload.user_id)
-      .select('first_name, last_name, email, email_verified, phone, phone_verified, identity_verified, profile_image, created_at, updated_at')
+      .select('*')
       .single()
     
     if (updateError) {
@@ -218,10 +209,8 @@ export async function PUT(request) {
       first_name: updatedUser.first_name,
       last_name: updatedUser.last_name,
       email: updatedUser.email,
-      phone: updatedUser.phone,
       role: updatedUser.role,
       email_verified: updatedUser.email_verified,
-      phone_verified: updatedUser.phone_verified,
       identity_verified: updatedUser.identity_verified,
       profile_image: updatedUser.profile_image,
       created_at: updatedUser.created_at,

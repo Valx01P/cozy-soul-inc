@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import Navbar from '../components/minimal/site/Navbar'
 import Footer from '../components/minimal/site/Footer'

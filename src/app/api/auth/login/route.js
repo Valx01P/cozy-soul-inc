@@ -13,8 +13,6 @@ CREATE TABLE users (
   password TEXT, -- Required for password-based auth
   email_verified BOOLEAN DEFAULT FALSE,
   role VARCHAR(50) NOT NULL DEFAULT 'guest', -- 'guest', 'admin'
-  phone VARCHAR(20),
-  phone_verified BOOLEAN DEFAULT FALSE,
   identity_verified BOOLEAN DEFAULT FALSE,
   profile_image VARCHAR(255) DEFAULT 'https://placehold.co/1024x1024/png?text=User',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -39,10 +37,8 @@ CREATE TABLE users (
     "first_name": "John",
     "last_name": "Doe",
     "email": "example@gmail.com",
-    "phone": "1234567890",
     "role": "guest",
     "email_verified": false,
-    "phone_verified": false,
     "identity_verified": false,
     "profile_image": "https://example.com/profile.jpg",
     "created_at": "2023-10-01T12:00:00Z",
@@ -89,7 +85,6 @@ export async function POST(request) {
       email: user.email,
       role: user.role, // guest or admin
       email_verified: user.email_verified,
-      phone_verified: user.phone_verified,
       identity_verified: user.identity_verified
     }
     
@@ -102,10 +97,8 @@ export async function POST(request) {
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,
-      phone: user.phone,
       role: user.role,
       email_verified: user.email_verified,
-      phone_verified: user.phone_verified,
       identity_verified: user.identity_verified,
       profile_image: user.profile_image,
       created_at: user.created_at,

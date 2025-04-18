@@ -13,8 +13,6 @@ CREATE TABLE users (
   password TEXT, -- Required for password-based auth
   email_verified BOOLEAN DEFAULT FALSE,
   role VARCHAR(50) NOT NULL DEFAULT 'guest', -- 'guest', 'admin'
-  phone VARCHAR(20),
-  phone_verified BOOLEAN DEFAULT FALSE,
   identity_verified BOOLEAN DEFAULT FALSE,
   profile_image VARCHAR(255) DEFAULT 'https://placehold.co/1024x1024/png?text=User',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -32,7 +30,6 @@ CREATE TABLE users (
     "first_name": "John",
     "last_name": "Doe",
     "email": "example@gmail.com",
-    "phone": "1234567890",
     "password": "password123"
   }
 
@@ -42,10 +39,8 @@ CREATE TABLE users (
     "first_name": "John",
     "last_name": "Doe",
     "email": "example@gmail.com",
-    "phone": "1234567890",
     "role": "guest",
     "email_verified": false,
-    "phone_verified": false,
     "identity_verified": false,
     "profile_image": "https://example.com/profile.jpg",
     "created_at": "2023-10-01T12:00:00Z",
@@ -59,9 +54,9 @@ CREATE TABLE users (
 */
 export async function POST(request) {
   try {
-    const { first_name, last_name, email, phone, password } = await request.json()
+    const { first_name, last_name, email, password } = await request.json()
 
-    if (!first_name || !last_name || !email || !phone || !password) {
+    if (!first_name || !last_name || !email || !password) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
     }
 
@@ -86,7 +81,7 @@ export async function POST(request) {
 
     const { data: newUser, error: createUserError } = await supabase
       .from('users')
-      .insert({ first_name, last_name, email, phone, password: hashedPassword })
+      .insert({ first_name, last_name, email, password: hashedPassword })
       .select()
       .single()
 
@@ -101,7 +96,6 @@ export async function POST(request) {
       email: newUser.email,
       role: newUser.role, // 'guest'
       email_verified: newUser.email_verified,
-      phone_verified: newUser.phone_verified,
       identity_verified: newUser.identity_verified
     }
 
@@ -114,10 +108,8 @@ export async function POST(request) {
       first_name: newUser.first_name,
       last_name: newUser.last_name,
       email: newUser.email,
-      phone: newUser.phone,
       role: newUser.role,
       email_verified: newUser.email_verified,
-      phone_verified: newUser.phone_verified,
       identity_verified: newUser.identity_verified,
       profile_image: newUser.profile_image,
       created_at: newUser.created_at,

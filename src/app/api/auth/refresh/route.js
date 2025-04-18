@@ -18,8 +18,6 @@ CREATE TABLE users (
   password TEXT, -- Required for password-based auth
   email_verified BOOLEAN DEFAULT FALSE,
   role VARCHAR(50) NOT NULL DEFAULT 'guest', -- 'guest', 'admin'
-  phone VARCHAR(20),
-  phone_verified BOOLEAN DEFAULT FALSE,
   identity_verified BOOLEAN DEFAULT FALSE,
   profile_image VARCHAR(255) DEFAULT 'https://placehold.co/1024x1024/png?text=User',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -67,7 +65,6 @@ export async function POST() {
       email: payload.email,
       role: payload.role,
       email_verified: payload.email_verified,
-      phone_verified: payload.phone_verified,
       identity_verified: payload.identity_verified
     }
     

@@ -11,8 +11,6 @@ CREATE TABLE users (
   password TEXT, -- Required for password-based auth
   email_verified BOOLEAN DEFAULT FALSE,
   role VARCHAR(50) NOT NULL DEFAULT 'guest', -- 'guest', 'admin'
-  phone VARCHAR(20) NOT NULL,
-  phone_verified BOOLEAN DEFAULT FALSE,
   identity_verified BOOLEAN DEFAULT FALSE,
   profile_image VARCHAR(255) DEFAULT 'https://placehold.co/1024x1024/png?text=User',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -20,17 +18,6 @@ CREATE TABLE users (
 );
 
 CREATE TABLE emailverificationcodes (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  expires_at TIMESTAMP NOT NULL, -- can only get new once expired, then reset expires and attempts
-  attempts INTEGER DEFAULT 3, -- 3 tries then wait until expired for new code
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- on new code, just override the old one
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE TABLE phoneverificationcodes (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL,
   code VARCHAR(255) NOT NULL,
@@ -139,6 +126,18 @@ CREATE TABLE propertyavailability (
   FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
 );
 
+CREATE TABLE messages (
+  id SERIAL PRIMARY KEY,
+  property_id INTEGER NOT NULL,
+  sender_id INTEGER NOT NULL,
+  recipient_id INTEGER NOT NULL,
+  body TEXT NOT NULL,
+  sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  is_read BOOLEAN DEFAULT FALSE,
+  FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+  FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE
+);
 
 -- Table for reservations
 CREATE TABLE reservations (
@@ -224,6 +223,7 @@ CREATE TABLE identityverifications (
 __* Drop Database *__
 ```sql
 -- This will forcibly drop all tables regardless of dependencies
+DROP TABLE IF EXISTS messages CASCADE;
 DROP TABLE IF EXISTS reservationnotifications CASCADE;
 DROP TABLE IF EXISTS identityverifications CASCADE;
 DROP TABLE IF EXISTS payments CASCADE;
@@ -237,7 +237,6 @@ DROP TABLE IF EXISTS amenities CASCADE;
 DROP TABLE IF EXISTS locations CASCADE;
 DROP TABLE IF EXISTS amenitiescategories CASCADE;
 DROP TABLE IF EXISTS emaillogs CASCADE;
-DROP TABLE IF EXISTS phoneverificationcodes CASCADE;
 DROP TABLE IF EXISTS emailverificationcodes CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
@@ -256,10 +255,10 @@ __* Database Seeding SQL Query *__
 
 ```sql
 -- Insert admin user
-INSERT INTO users (first_name, last_name, email, password, email_verified, role, phone, phone_verified, identity_verified, profile_image)
-VALUES ('Pablo', 'Valdes', 'example@gmail.com', 'password123', TRUE, 'admin', '786-346-0791', FALSE, FALSE, 'https://placehold.co/1024x1024/png?text=Admin'),
-('John', 'Doe', 'john.doe@example.com', 'password456', TRUE, 'guest', '786-346-0791', FALSE, FALSE, 'https://placehold.co/1024x1024/png?text=User'),
-('Alice', 'Smith', 'alice.smith@example.com', 'password789', FALSE, 'guest', '786-346-0791', FALSE, FALSE, 'https://placehold.co/1024x1024/png?text=User');
+INSERT INTO users (first_name, last_name, email, password, email_verified, role, identity_verified, profile_image)
+VALUES ('Pablo', 'Valdes', 'example@gmail.com', 'password123', TRUE, 'admin', FALSE, 'https://placehold.co/1024x1024/png?text=Admin'),
+('John', 'Doe', 'john.doe@example.com', 'password456', TRUE, 'guest', FALSE, 'https://placehold.co/1024x1024/png?text=User'),
+('Alice', 'Smith', 'alice.smith@example.com', 'password789', FALSE, 'guest', FALSE, 'https://placehold.co/1024x1024/png?text=User');
 
 -- Insert amenity categories
 INSERT INTO amenitiescategories (name) VALUES 
