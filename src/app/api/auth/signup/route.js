@@ -87,12 +87,12 @@ export async function POST(request) {
 
     await setAuthCookies(accessToken, refreshToken)
 
-    // role not included in the response for security reasons
     const response = {
       first_name: newUser.first_name,
       last_name: newUser.last_name,
       email: newUser.email,
       phone: newUser.phone,
+      role: newUser.role,
       email_verified: newUser.email_verified,
       phone_verified: newUser.phone_verified,
       identity_verified: newUser.identity_verified,

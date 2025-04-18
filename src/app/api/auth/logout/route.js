@@ -2,12 +2,12 @@
 import { NextResponse } from 'next/server'
 import { clearAuthCookies } from '@/app/lib/auth'
 
-/**
- * Handles user logout by clearing auth cookies
+ /*
+    @description
+    Clears ACCESS and REFRESH tokens from cookies
  */
 export async function POST() {
   try {
-    // Clear authentication cookies
     await clearAuthCookies()
 
     const response = {

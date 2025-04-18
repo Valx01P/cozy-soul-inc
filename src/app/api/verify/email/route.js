@@ -127,6 +127,7 @@ export async function POST(request) {
       last_name: user.last_name,
       email: user.email,
       phone: user.phone,
+      role: user.role,
       email_verified: user.email_verified,
       phone_verified: user.phone_verified,
       identity_verified: user.identity_verified,

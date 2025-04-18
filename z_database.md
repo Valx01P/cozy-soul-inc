@@ -23,7 +23,8 @@ CREATE TABLE emailverificationcodes (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL,
   code VARCHAR(255) NOT NULL,
-  expires_at TIMESTAMP NOT NULL,
+  expires_at TIMESTAMP NOT NULL, -- can only get new once expired, then reset expires and attempts
+  attempts INTEGER DEFAULT 3, -- 3 tries then wait until expired for new code
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- on new code, just override the old one
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -33,10 +34,26 @@ CREATE TABLE phoneverificationcodes (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL,
   code VARCHAR(255) NOT NULL,
-  expires_at TIMESTAMP NOT NULL,
+  expires_at TIMESTAMP NOT NULL, -- can only get new once expired, then reset expires and attempts
+  attempts INTEGER DEFAULT 3, -- 3 tries then wait until expired for new code
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- on new code, just override the old one
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE emaillogs (
+  id SERIAL PRIMARY KEY,
+  sender_id INTEGER NOT NULL,
+  recipient_id INTEGER NOT NULL,
+  to_email VARCHAR(255) NOT NULL,
+  from_email VARCHAR(255) NOT NULL,
+  subject VARCHAR(255) NOT NULL,
+  body TEXT NOT NULL,
+  sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  type VARCHAR(50) NOT NULL, -- 'verification', 'notification', 'reminder', etc.
+  is_read BOOLEAN DEFAULT FALSE,
+  FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Table for amenity categories
@@ -171,8 +188,8 @@ CREATE TABLE payments (
   FOREIGN KEY (installment_id) REFERENCES installments(id) ON DELETE SET NULL
 );
 
--- Table for email notifications
-CREATE TABLE notifications (
+-- Table for reservation notifications for admins and users
+CREATE TABLE reservationnotifications (
   id SERIAL PRIMARY KEY,
   user_id INTEGER,
   reservation_id INTEGER,
@@ -207,8 +224,8 @@ CREATE TABLE identityverifications (
 __* Drop Database *__
 ```sql
 -- This will forcibly drop all tables regardless of dependencies
+DROP TABLE IF EXISTS reservationnotifications CASCADE;
 DROP TABLE IF EXISTS identityverifications CASCADE;
-DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS payments CASCADE;
 DROP TABLE IF EXISTS installments CASCADE;
 DROP TABLE IF EXISTS reservations CASCADE;
@@ -219,9 +236,10 @@ DROP TABLE IF EXISTS properties CASCADE;
 DROP TABLE IF EXISTS amenities CASCADE;
 DROP TABLE IF EXISTS locations CASCADE;
 DROP TABLE IF EXISTS amenitiescategories CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
-DROP TABLE IF EXISTS emailverificationcodes CASCADE;
+DROP TABLE IF EXISTS emaillogs CASCADE;
 DROP TABLE IF EXISTS phoneverificationcodes CASCADE;
+DROP TABLE IF EXISTS emailverificationcodes CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
 
 -- Also drop the trigger function
 DROP FUNCTION IF EXISTS update_timestamp() CASCADE;
@@ -544,8 +562,8 @@ INSERT INTO payments (
 (4, 4, 'pi_1NTa53KL6EOCZlgVY5xUcNop', 'cs_test_d1WYl53Zh5iFwM2SJSdM8YEhfbIaNpyX36MMiS1fXIJIcyMVnD8Mp0vXhG', 
  665.00, 'USD', 'succeeded', 'installment', '2025-04-12 11:30:05', '2025-04-12 11:30:05');
 
--- Insert sample notifications
-INSERT INTO notifications (user_id, reservation_id, type, message, is_read, created_at) VALUES
+-- Insert sample reservationnotifications
+INSERT INTO reservationnotifications (user_id, reservation_id, type, message, is_read, created_at) VALUES
 -- Host notifications
 (1, 1, 'reservation_request', 'You have a new reservation request for "Beautiful Apartment"', TRUE, '2025-04-10 14:23:45'),
 (1, 1, 'payment_received', 'Payment received for reservation #1', FALSE, '2025-04-10 15:30:21'),

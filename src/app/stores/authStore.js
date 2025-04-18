@@ -1,5 +1,9 @@
+'use client'
+
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import authService from '@/app/services/api/authService'
+import userService from '@/app/services/api/userService'
 
 // Create the auth store with persistence
 const useAuthStore = create(
@@ -11,70 +15,45 @@ const useAuthStore = create(
       isLoading: false,
       error: null,
       
-      // Login action
-      login: async (email, password) => {
+      login: async (loginData) => {
         set({ isLoading: true, error: null })
         
         try {
-          const response = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-          })
+          const userData = await authService.login(loginData)
           
-          const data = await response.json()
-          
-          if (!response.ok) {
-            throw new Error(data.message || 'Login failed')
-          }
-          
-          // Update state with user data, tokens are stored in HTTP-only cookies
           set({
             user: {
-              first_name: data.first_name,
-              last_name: data.last_name,
-              email: data.email,
-              username: data.username,
-              profile_image: data.profile_image
+              first_name: userData.first_name,
+              last_name: userData.last_name,
+              email: userData.email,
+              phone: userData.phone,
+              role: userData.role,
+              email_verified: userData.email_verified,
+              phone_verified: userData.phone_verified,
+              identity_verified: userData.identity_verified,
+              profile_image: userData.profile_image,
+              created_at: userData.created_at,
+              updated_at: userData.updated_at
             },
             isAuthenticated: true,
             isLoading: false
           })
           
-          return data
+          return userData
         } catch (error) {
           set({ error: error.message, isLoading: false })
           throw error
         }
       },
       
-      // Logout action
-      logout: async () => {
-        set({ isLoading: true })
+      googleLogin: (redirectTo = '/') => {
+        set({ isLoading: true, error: null })
         
         try {
-          // Call logout API to clear cookies
-          const response = await fetch('/api/auth/logout', {
-            method: 'POST'
-          })
+          authService.googleLogin(redirectTo)
           
-          if (!response.ok) {
-            const data = await response.json()
-            throw new Error(data.message || 'Logout failed')
-          }
-          
-          // Reset auth state
-          set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: null
-          })
-          
-          // Clear local storage persisted state
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('auth-storage')
-          }
+          // Note: We don't update the state here because we're redirecting to Google
+          // The state will be updated after redirect back via checkAuth
           
           return true
         } catch (error) {
@@ -83,165 +62,173 @@ const useAuthStore = create(
         }
       },
       
-      // Check current auth status
+      handleGoogleCallback: async () => {
+        // This is called after returning from Google OAuth
+        // Immediately check auth status to update user state
+        await get().checkAuth()
+        return true
+      },
+      
+      signup: async (signUpData) => {
+        set({ isLoading: true, error: null })
+        
+        try {
+          const user = await authService.signup(signUpData)
+          
+          // Update state with user data
+          set({
+            user: {
+              first_name: user.first_name,
+              last_name: user.last_name,
+              email: user.email,
+              phone: user.phone,
+              role: user.role,
+              email_verified: user.email_verified,
+              phone_verified: user.phone_verified,
+              identity_verified: user.identity_verified,
+              profile_image: user.profile_image,
+              created_at: user.created_at,
+              updated_at: user.updated_at
+            },
+            isAuthenticated: true,
+            isLoading: false
+          })
+          
+          return user
+        } catch (error) {
+          set({ error: error.message, isLoading: false })
+          throw error
+        }
+      },
+      
+      logout: async () => {
+        set({ isLoading: true })
+        
+        try {
+          await authService.logout()
+          
+          set({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: null
+          })
+          
+
+          localStorage.removeItem('auth-storage')
+          
+          return true
+        } catch (error) {
+          set({ error: error.message, isLoading: false })
+          throw error
+        }
+      },
+
+      // used in AuthProvider.js
       checkAuth: async () => {
         if (get().isLoading) return
         
         set({ isLoading: true })
         
         try {
-          const response = await fetch('/api/auth/me', {
-            method: 'GET',
-            credentials: 'include' // Important for cookies
-          })
-          
-          if (!response.ok) {
-            // If unauthorized, clear auth state
-            if (response.status === 401) {
-              set({
-                user: null,
-                isAuthenticated: false,
-                isLoading: false,
-                error: null
-              })
-              return
-            }
-            
-            const data = await response.json()
-            throw new Error(data.message || 'Authentication check failed')
-          }
-          
-          const data = await response.json()
+          const userData = await userService.getMe()
           
           set({
             user: {
-              first_name: data.first_name,
-              last_name: data.last_name,
-              email: data.email,
-              username: data.username,
-              profile_image: data.profile_image
+              first_name: userData.first_name,
+              last_name: userData.last_name,
+              email: userData.email,
+              phone: userData.phone,
+              role: userData.role,
+              email_verified: userData.email_verified,
+              phone_verified: userData.phone_verified,
+              identity_verified: userData.identity_verified,
+              profile_image: userData.profile_image,
+              created_at: userData.created_at,
+              updated_at: userData.updated_at
             },
             isAuthenticated: true,
-            isLoading: false
+            isLoading: false,
+            error: null
           })
         } catch (error) {
+          
           set({ 
-            error: error.message, 
-            isLoading: false,
+            user: null,
             isAuthenticated: false,
-            user: null
+            isLoading: false,
+            error: null
           })
+          
+          throw error
         }
       },
       
-      // Attempt to refresh the token
+      // used in AuthProvider.js
       refreshToken: async () => {
+        if (!get().isAuthenticated) return false
+        
         try {
-          const response = await fetch('/api/auth/refresh', {
-            method: 'POST',
-            credentials: 'include' // Important for cookies
-          })
-          
-          if (!response.ok) {
-            // If refresh fails, log the user out
-            set({
-              user: null,
-              isAuthenticated: false,
-              error: null
-            })
-            return false
-          }
-          
+          await authService.refresh()
           return true
         } catch (error) {
+
           set({
             user: null,
             isAuthenticated: false,
             error: null
           })
+          
+          localStorage.removeItem('auth-storage')
+          
           return false
         }
       },
       
-      // Clear any error messages
-      clearError: () => set({ error: null }),
-
-
-
-      updateProfile: async (profileData, imageFile = null) => {
+      verifyEmail: async (code) => {
         set({ isLoading: true, error: null })
         
         try {
-          // Handle image upload first if provided
-          let updatedProfileData = { ...profileData }
+          const userData = await authService.verifyEmail(code)
           
-          if (imageFile) {
-            // Create FormData for the image upload
-            const formData = new FormData()
-            formData.append('images', imageFile)
-            
-            // Upload the image
-            const uploadResponse = await fetch('/api/upload', {
-              method: 'POST',
-              body: formData
-            })
-            
-            if (!uploadResponse.ok) {
-              const errorData = await uploadResponse.json()
-              throw new Error(errorData.message || 'Failed to upload profile image')
-            }
-            
-            // Get the image URL from the response
-            const imageData = await uploadResponse.json()
-            const imageUrl = Array.isArray(imageData) ? imageData[0] : imageData
-            
-            // If admin already has an image, delete the old one
-            const currentUser = get().user
-            if (currentUser?.profile_image && imageUrl !== currentUser.profile_image) {
-              try {
-                await fetch('/api/upload', {
-                  method: 'DELETE',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ filepath: currentUser.profile_image })
-                })
-              } catch (err) {
-                console.error('Failed to delete old profile image:', err)
-                // Continue even if deletion fails
-              }
-            }
-            
-            // Add the image URL to the profile data
-            updatedProfileData.profile_image = imageUrl
-          }
-          
-          // Update the admin profile
-          const response = await fetch('/api/auth/me', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedProfileData)
-          })
-          
-          const data = await response.json()
-          
-          if (!response.ok) {
-            throw new Error(data.message || 'Profile update failed')
-          }
-          
-          // Update the user state with the new profile data
           set({
             user: {
               ...get().user,
-              ...updatedProfileData
+              email_verified: true,
+              ...userData
             },
             isLoading: false
           })
           
-          return data
+          return userData
         } catch (error) {
           set({ error: error.message, isLoading: false })
           throw error
         }
-      }
+      },
+      
+      clearError: () => set({ error: null }),
+
+      updateProfile: async (profileUpdateData) => {
+        set({ isLoading: true, error: null })
+        
+        try {
+          const userData = await userService.updateMe(profileUpdateData)
+          
+          set({
+            user: {
+              ...get().user,
+              ...userData
+            },
+            isLoading: false
+          })
+          
+          return userData
+        } catch (error) {
+          set({ error: error.message, isLoading: false })
+          throw error
+        }
+      },
     }),
     {
       name: 'auth-storage',

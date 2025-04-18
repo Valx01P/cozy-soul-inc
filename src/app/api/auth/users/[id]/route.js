@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { verifyToken, getAuthTokens } from '@/app/lib/auth'
 import supabase from '@/app/services/supabase'
 
-// TESTING ONLY - ADMIN ONLY
+// TESTING ONLY - ANYONE
 
 /**
  *
@@ -61,9 +61,9 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    if (payload.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    // if (payload.role !== 'admin') {
+    //   return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    // }
 
     const { data: user, error: userError } = await supabase
       .from('users')

@@ -16,7 +16,7 @@ import { isRateLimited } from '@/app/lib/utils'
  *  "propertyid": "1" // Optional, if provided, will fetch property details from the database
  * }
  */
-export async function POST(request) {  
+export async function POST(request) {
   try {
 
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || request.headers.get('remote_addr') || request.connection.remoteAddress
