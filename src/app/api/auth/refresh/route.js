@@ -8,8 +8,7 @@ import {
   getAuthTokens 
 } from '@/app/lib/auth'
 
-/**
- *
+/*
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   first_name VARCHAR(255) NOT NULL,
@@ -26,12 +25,24 @@ CREATE TABLE users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
- */
+*/
 
-/**
- * Refreshes the access token using a valid refresh token
- * Sets new HTTP-only cookies and returns new tokens
- */
+/*
+  @description
+  Refreshes the access and refresh tokens using the refresh token.
+  This is typically used when the access token has expired and a new one is needed.
+
+  @requires
+  REFRESH_TOKEN
+
+  @returns
+  ACCESS_TOKEN, REFRESH_TOKEN
+
+  @throws
+  {
+    "error": "Some error message"
+  }
+*/
 export async function POST() {
   try {
 

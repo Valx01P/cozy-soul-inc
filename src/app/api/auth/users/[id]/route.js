@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server'
 import { verifyToken, getAuthTokens } from '@/app/lib/auth'
 import supabase from '@/app/services/supabase'
 
-// TESTING ONLY - ANYONE
-
-/**
- *
+/*
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   first_name VARCHAR(255) NOT NULL,
@@ -21,12 +18,38 @@ CREATE TABLE users (
   profile_image VARCHAR(255) DEFAULT 'https://placehold.co/1024x1024/png?text=User',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)
- */
+);
+*/
 
-/**
- * Returns a user by ID
- */
+/*
+  @description
+  Get any user's information by ID.
+  Could be useful for profile pages or admin panels.
+
+  @requires
+  ACCESS_TOKEN
+
+  @returns
+  {
+    "id": "1",
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "example@gmail.com",
+    "phone": "1234567890",
+    "role": "guest",
+    "email_verified": false,
+    "phone_verified": false,
+    "identity_verified": false,
+    "profile_image": "https://example.com/profile.jpg",
+    "created_at": "2023-10-01T12:00:00Z",
+    "updated_at": "2023-10-01T12:00:00Z"
+  }
+
+  @throws
+  {
+    "error": "Some error message"
+  }
+*/
 export async function GET(request, { params }) {
   try {
     const { id } = await params
@@ -91,77 +114,6 @@ export async function GET(request, { params }) {
       profile_image: user.profile_image,
       created_at: user.created_at,
       updated_at: user.updated_at
-    }
-
-    return NextResponse.json(response, { status: 200 })
-  } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-}
-
-/**
- * Updates a user by ID
- * Could be used for admins to update user roles
- * Currently not needed, but left here for future use
- * in case we need to make a marketplace like update
- * with multiple admins (hosts)
- */
-// export async function PUT(request, { params }) {
-
-// }
-
-/**
- * Deletes a user by ID
- */
-export async function DELETE(request, { params }) {
-  try {
-    const { id } = await params
-
-    if (!id) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
-    }
-
-    const { accessToken } = await getAuthTokens(request)
-
-    if (!accessToken) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const payload = await verifyToken(accessToken)
-
-    /**
-     * @example Payload:
-     * {
-     *   "user_id": "123",
-     *   "first_name": "John",
-     *   "last_name": "Doe",
-     *   "email": "user@example.com",
-     *   "role": "guest",
-     *   "email_verified": false,
-     *   "phone_verified": false,
-     *   "identity_verified": false
-     * }
-     */
-    
-    if (!payload || !payload.user_id) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
-
-    if (payload.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
-    const { error: deleteUserError } = await supabase
-      .from('users')
-      .delete()
-      .eq('id', id)
-    
-    if (deleteUserError) {
-      return NextResponse.json({ error: `Deletion failed: ${deleteUserError.message}` }, { status: 500 })
-    }
-
-    const response = {
-      message: 'User deleted successfully'
     }
 
     return NextResponse.json(response, { status: 200 })

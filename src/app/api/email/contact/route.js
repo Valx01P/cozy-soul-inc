@@ -5,17 +5,30 @@ import GeneralEmail from '@/app/components/emails/GeneralEmail'
 import ListingEmail from '@/app/components/emails/ListingEmail'
 import { isRateLimited } from '@/app/lib/utils'
 
-/**
- * Handles contact form submissions
- * @example Request Body:
- * {
- *  "name": "John Doe",
- *  "email": "john.doe@example.com",
- *  "phone": "123-456-7890",
- *  "message": "I am interested in this property.",
- *  "propertyid": "1" // Optional, if provided, will fetch property details from the database
- * }
- */
+// TODO: Change email target to the property owner if propertyid is provided
+
+/*
+  @description
+  Handles contact form submissions from the website.
+  This is typically used to send inquiries about properties or general messages to the website admin.
+
+  @requires
+  {
+    "name": "John Doe",
+    "email": "example@gmail.com",
+    "phone": "1234567890",
+    "message": "Hello, I am interested in this property.",
+    "propertyid": "2" // Optional, if provided, will fetch property details for the email
+  }
+
+  @returns
+  SENDS EMAIL TO THE WEBSITE ADMIN OR PROPERTY OWNER
+
+  @throws
+  {
+    "error": "Some error message"
+  }
+*/
 export async function POST(request) {
   try {
 
@@ -73,12 +86,8 @@ export async function POST(request) {
     if (emailError) {
       return NextResponse.json({ error: `Failed to send email: ${emailError.message}` }, { status: 500 })
     }
-
-    const response = {
-      message: 'Email sent successfully',
-    }
     
-    return NextResponse.json(response, { status: 200 })
+    return NextResponse.json({ status: 200 })
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

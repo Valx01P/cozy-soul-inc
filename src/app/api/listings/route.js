@@ -9,6 +9,9 @@ import supabase from '@/app/services/supabase'
  * @example Query Parameters:
  * ?page=1&limit=10&active=true
  */
+/*
+
+*/
 export async function GET(request) {
   try {
     const url = new URL(request.url)

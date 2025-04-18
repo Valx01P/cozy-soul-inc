@@ -1,33 +1,33 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import useAuthStore from '@/app/stores/authStore';
-import useGoogleAuth from '@/app/hooks/useGoogleAuth';
-import { Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import useAuthStore from '@/app/stores/authStore'
+import useGoogleAuth from '@/app/hooks/useGoogleAuth'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
-  const router = useRouter();
-  const { login, googleLogin, isAuthenticated, isLoading, error, clearError } = useAuthStore();
-  const { errorMessage } = useGoogleAuth({ successRedirect: '/dashboard' });
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter()
+  const { login, googleLogin, isAuthenticated, isLoading, error, clearError } = useAuthStore()
+  const { errorMessage } = useGoogleAuth({ successRedirect: '/dashboard' })
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   
   useEffect(() => {
-    if (isAuthenticated) router.push('/dashboard');
-  }, [isAuthenticated, router]);
+    if (isAuthenticated) router.push('/dashboard')
+  }, [isAuthenticated, router])
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    clearError();
+    e.preventDefault()
+    clearError()
     try {
-      await login(email, password);
+      await login(email, password)
     } catch (err) {
-      console.error('Login error:', err);
+      console.error('Login error:', err)
     }
-  };
+  }
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -137,5 +137,5 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }

@@ -1,22 +1,31 @@
 // src/app/api/auth/google/callback/route.js
-import { NextResponse } from 'next/server';
-import supabase from '@/app/services/supabase';
-import { generateAccessToken, generateRefreshToken, setAuthCookies } from '@/app/lib/auth';
+import { NextResponse } from 'next/server'
+import supabase from '@/app/services/supabase'
+import { generateAccessToken, generateRefreshToken, setAuthCookies } from '@/app/lib/auth'
 
-/**
- * Handles Google OAuth callback
- * Exchanges authorization code for tokens and user info
- * Creates or updates user in the database
- * Sets JWT tokens as HTTP-only cookies
- */
+/*
+  @description
+  Handles Google OAuth callback
+  Exchanges authorization code for tokens and user info
+  Creates or updates user in the database
+  Sets JWT tokens as HTTP-only cookies
+  
+  @returns
+  REDIRECTS TO LOGIN PAGE ON ERROR OR USER DASHBOARD ON SUCCESS
+  
+  @throws
+  {
+    "error": "Some error message"
+  }
+*/
 export async function GET(request) {
   try {
-    const url = new URL(request.url);
-    const code = url.searchParams.get('code');
-    const state = url.searchParams.get('state') || '/';
+    const url = new URL(request.url)
+    const code = url.searchParams.get('code')
+    const state = url.searchParams.get('state') || '/'
     
     if (!code) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/login?error=no_code`);
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/login?error=no_code`)
     }
 
     // Exchange code for access token and ID token
@@ -30,25 +39,25 @@ export async function GET(request) {
         redirect_uri: `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/google/callback`,
         grant_type: 'authorization_code'
       })
-    });
+    })
 
-    const tokenData = await tokenResponse.json();
+    const tokenData = await tokenResponse.json()
     
     if (!tokenResponse.ok) {
-      console.error('Token exchange error:', tokenData);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/login?error=token_exchange`);
+      console.error('Token exchange error:', tokenData)
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/login?error=token_exchange`)
     }
 
     // Get user info from Google
     const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v1/userinfo', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` }
-    });
+    })
     
-    const googleUser = await userInfoResponse.json();
+    const googleUser = await userInfoResponse.json()
     
     if (!userInfoResponse.ok) {
-      console.error('Error fetching user info:', googleUser);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/login?error=user_info`);
+      console.error('Error fetching user info:', googleUser)
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/login?error=user_info`)
     }
 
     // Check if user exists in our database
@@ -56,14 +65,14 @@ export async function GET(request) {
       .from('users')
       .select('*')
       .eq('email', googleUser.email)
-      .maybeSingle();
+      .maybeSingle()
     
     if (findError && findError.code !== 'PGRST116') {
-      console.error('Error finding user:', findError);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/login?error=db_error`);
+      console.error('Error finding user:', findError)
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/login?error=db_error`)
     }
 
-    let user;
+    let user
     
     if (existingUser) {
       // Update existing user with latest Google info
@@ -79,14 +88,14 @@ export async function GET(request) {
         })
         .eq('id', existingUser.id)
         .select()
-        .single();
+        .single()
       
       if (updateError) {
-        console.error('Error updating user:', updateError);
-        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/login?error=update_error`);
+        console.error('Error updating user:', updateError)
+        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/login?error=update_error`)
       }
       
-      user = updatedUser;
+      user = updatedUser
     } else {
       // Create new user
       const { data: newUser, error: createError } = await supabase
@@ -101,14 +110,14 @@ export async function GET(request) {
           role: 'guest'
         })
         .select()
-        .single();
+        .single()
       
       if (createError) {
-        console.error('Error creating user:', createError);
-        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/login?error=create_error`);
+        console.error('Error creating user:', createError)
+        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/login?error=create_error`)
       }
       
-      user = newUser;
+      user = newUser
     }
 
     // Generate JWT tokens
@@ -121,18 +130,18 @@ export async function GET(request) {
       email_verified: user.email_verified,
       phone_verified: user.phone_verified,
       identity_verified: user.identity_verified
-    };
+    }
     
-    const accessToken = await generateAccessToken(payload);
-    const refreshToken = await generateRefreshToken(payload);
+    const accessToken = await generateAccessToken(payload)
+    const refreshToken = await generateRefreshToken(payload)
     
     // Set HTTP-only cookies
-    await setAuthCookies(accessToken, refreshToken);
+    await setAuthCookies(accessToken, refreshToken)
 
     // Redirect to the original intended destination (or homepage)
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}${state}`);
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}${state}`)
   } catch (error) {
-    console.error('Google OAuth callback error:', error);
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/login?error=oauth_failed`);
+    console.error('Google OAuth callback error:', error)
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/login?error=oauth_failed`)
   }
 }

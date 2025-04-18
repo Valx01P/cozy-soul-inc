@@ -3,8 +3,7 @@ import supabase from '@/app/services/supabase'
 import bcrypt from 'bcryptjs'
 import { generateAccessToken, generateRefreshToken, setAuthCookies } from '@/app/lib/auth'
 
-/**
- *
+/*
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   first_name VARCHAR(255) NOT NULL,
@@ -21,19 +20,43 @@ CREATE TABLE users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
- */
+*/
 
-/**
- * Handles native user sign up
- * @example Request Body:
- * {
- *   "first_name": "John",
- *   "last_name": "Doe",
- *   "email": "user@example.com",
- *   "phone": "1234567890",
- *   "password": "yourpassword" -- will be hashed
- * }
- */
+/*
+  @description
+  Handles user signup using email, password, and other details.
+  This is typically used to create a new user account and provide them with access and refresh tokens.
+
+  @requires
+  {
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "example@gmail.com",
+    "phone": "1234567890",
+    "password": "password123"
+  }
+
+  @returns
+  ACCESS_TOKEN, REFRESH_TOKEN,
+  {
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "example@gmail.com",
+    "phone": "1234567890",
+    "role": "guest",
+    "email_verified": false,
+    "phone_verified": false,
+    "identity_verified": false,
+    "profile_image": "https://example.com/profile.jpg",
+    "created_at": "2023-10-01T12:00:00Z",
+    "updated_at": "2023-10-01T12:00:00Z"
+  }
+
+  @throws
+  {
+    "error": "Some error message"
+  }
+*/
 export async function POST(request) {
   try {
     const { first_name, last_name, email, phone, password } = await request.json()

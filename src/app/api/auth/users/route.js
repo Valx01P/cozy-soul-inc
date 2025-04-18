@@ -4,8 +4,7 @@ import supabase from '@/app/services/supabase'
 
 // TESTING ONLY - ADMIN ONLY
 
-/**
- *
+/*
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   first_name VARCHAR(255) NOT NULL,
@@ -22,12 +21,36 @@ CREATE TABLE users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
- */
+*/
 
-/**
- * Returns all users in the database
- * Requires a valid access token
- */
+/*
+  @description
+  Retrieves all users' information from the database.
+  This is typically used for admin panels or user management interfaces.
+  Only accessible by admin users.
+
+  @requires
+  ACCESS_TOKEN, ADMIN_ROLE
+
+  @returns
+  [
+    {
+      "id": "1",
+      "first_name": "John",
+      "last_name": "Doe",
+      "email": "example@gmail.com",
+      "phone": "1234567890",
+      "role": "guest",
+      "email_verified": false,
+      "phone_verified": false,
+      "identity_verified": false,
+      "profile_image": "https://example.com/profile.jpg",
+      "created_at": "2023-10-01T12:00:00Z",
+      "updated_at": "2023-10-01T12:00:00Z"
+    },
+    more users...
+  ]
+*/
 export async function GET(request) {
   try {
     const { accessToken } = await getAuthTokens(request)

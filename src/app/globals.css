@@ -14,8 +14,8 @@
 :root {
   --primary-orange: #FB5904;
   --primary-blue: #006dd9;
-  --primary-red: #FF0052;
-  --primary-red-hover: #FF266C;
+  --primary-red: #FF0052; /* Brand Color */
+  --primary-red-hover: #FF266C; /* Brand Color Hover */
 }
 
 /* box-shadow: [horizontal offset] [vertical offset] [blur radius] [spread radius] [color] [inset]; */

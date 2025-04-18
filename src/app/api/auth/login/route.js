@@ -1,11 +1,9 @@
-// src/app/api/auth/login/route.js
 import { NextResponse } from 'next/server'
 import supabase from '@/app/services/supabase'
 import { generateAccessToken, generateRefreshToken, setAuthCookies } from '@/app/lib/auth'
 import bcrypt from 'bcryptjs'
 
-/**
- * 
+/*
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   first_name VARCHAR(255) NOT NULL,
@@ -22,18 +20,40 @@ CREATE TABLE users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
- */
+*/
 
-/**
- * Handles admin login with email and password
- * Returns JWT tokens for authenticated users
- * 
- * @example Request Body:
- * {
- *   "email": "admin@example.com",
- *   "password": "password123"
- * }
- */
+/*
+  @description
+  Handles user login using email and password.
+  This is typically used to authenticate users and provide them with access and refresh tokens.
+
+  @requires
+  {
+    "email": "example@gmail.com",
+    "password": "password123"
+  }
+  
+  @returns
+  ACCESS_TOKEN, REFRESH_TOKEN,
+  {
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "example@gmail.com",
+    "phone": "1234567890",
+    "role": "guest",
+    "email_verified": false,
+    "phone_verified": false,
+    "identity_verified": false,
+    "profile_image": "https://example.com/profile.jpg",
+    "created_at": "2023-10-01T12:00:00Z",
+    "updated_at": "2023-10-01T12:00:00Z"
+  }
+
+  @throws
+  {
+    "error": "Some error message"
+  }
+*/
 export async function POST(request) {
   try {
     const { email, password } = await request.json()

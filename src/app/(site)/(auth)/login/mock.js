@@ -1,54 +1,52 @@
+'use client'
 
-
-'use client';
-
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import useAuthStore from '@/app/stores/authStore';
-import useGoogleAuth from '@/app/hooks/useGoogleAuth';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import useAuthStore from '@/app/stores/authStore'
+import useGoogleAuth from '@/app/hooks/useGoogleAuth'
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 
 export default function LoginPage() {
-  const router = useRouter();
-  const { login, googleLogin, isAuthenticated, isLoading, error, clearError } = useAuthStore();
-  const { errorMessage } = useGoogleAuth({ successRedirect: '/dashboard' });
+  const router = useRouter()
+  const { login, googleLogin, isAuthenticated, isLoading, error, clearError } = useAuthStore()
+  const { errorMessage } = useGoogleAuth({ successRedirect: '/dashboard' })
   
   const [formData, setFormData] = useState({
     email: '',
     password: ''
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  })
+  const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/dashboard');
+      router.push('/dashboard')
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router])
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    clearError();
+    e.preventDefault()
+    clearError()
     
     try {
-      await login(formData.email, formData.password);
+      await login(formData.email, formData.password)
       // Will auto-redirect due to useEffect above
     } catch (error) {
       // Error state is handled by the store
-      console.error('Login error:', error);
+      console.error('Login error:', error)
     }
-  };
+  }
 
   const handleGoogleLogin = () => {
-    googleLogin('/dashboard');
-  };
+    googleLogin('/dashboard')
+  }
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-gray-50 to-gray-100">
@@ -267,5 +265,5 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }

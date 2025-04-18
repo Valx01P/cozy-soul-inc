@@ -1,15 +1,24 @@
 
 const emailService = {
-  /**
-   * Sends a contact email based on the provided data
-   * @typedef {Object} emailData - The data for the email to be sent.
-   * @property {string} name - The name of the person sending the email.
-   * @property {string} email - The email address of the person sending the email.
-   * @property {string} phone - The phone number of the person sending the email.
-   * @property {string} message - The message content of the email.
-   * @property {string} propertyid - Optional - The ID of the property related to the inquiry.
-   * @param {emailData} emailData - The data for the email to be sent.
-   */
+
+  /*
+    @requires
+    {
+      "name": "John Doe",
+      "email": "example@gmail.com",
+      "phone": "1234567890",
+      "message": "Hello, I am interested in this property.",
+      "propertyid": "2" // Optional, if provided, will fetch property details for the email
+    }
+
+    @returns
+    SENDS EMAIL TO THE WEBSITE ADMIN OR PROPERTY OWNER
+
+    @throws
+    {
+      "error": "Some error message"
+    }
+  */
   sendContactEmail: async (emailData) => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/email/contact`, {
@@ -33,5 +42,21 @@ const emailService = {
     }
   },
   sendVerificationEmail: async (emailData) => {
+  },
+  sendReservationRequestEmail: async (emailData) => {
+  },
+  sendReservationApprovedEmail: async (emailData) => {
+  },
+  sendReservationCancelledEmail: async (emailData) => {
+  },
+  sendReservationDeclinedEmail: async (emailData) => {
+  },
+  sendPaymentPlanEmail: async (emailData) => {
+  },
+  sendPaymentReminderEmail: async (emailData) => {
+  },
+  sendPaymentSuccessEmail: async (emailData) => {
+  },
+  sendMissingPaymentEmail: async (emailData) => {
   }
 }

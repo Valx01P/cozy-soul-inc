@@ -1,4 +1,4 @@
-'use client';
+'use client'
 
 import Navbar from '../components/minimal/site/Navbar'
 import Footer from '../components/minimal/site/Footer'
@@ -14,9 +14,9 @@ export default function SiteLayout({ children }) {
   )
 }
 
-// 'use client';
+// 'use client'
 
-// import react from "react";
+// import react from "react"
 // import Loading from "../components/minimal/site/Loading"
 // import Navbar from '../components/minimal/site/Navbar'
 // import Footer from '../components/minimal/site/Footer'

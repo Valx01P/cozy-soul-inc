@@ -1,9 +1,18 @@
-// src/app/api/auth/google/route.js
 import { NextResponse } from 'next/server';
 
-/**
- * Initiates Google OAuth flow by redirecting to Google's authorization endpoint
- */
+/*
+  @description
+  Redirects the user to Google's OAuth 2.0 authorization endpoint.
+  The user will be prompted to log in and authorize the application.
+    
+  @returns
+  REDIRECTS TO GOOGLE AUTHORIZATION PAGE
+  
+  @throws
+  {
+    "error": "Some error message"
+  }
+*/
 export async function GET(request) {
   try {
     const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/google/callback`;
