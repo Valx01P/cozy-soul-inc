@@ -193,6 +193,7 @@ const authService = {
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({ code })
       })
 
@@ -228,7 +229,8 @@ const authService = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        credentials: 'include'
       })
 
       const data = await res.json()

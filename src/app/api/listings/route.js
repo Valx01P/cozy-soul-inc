@@ -708,7 +708,7 @@ export async function POST(request) {
       updated_at: createdProperty.updated_at
     }
     
-    return NextResponse.json(response, { status: 201 })
+    return NextResponse.json(response, { status: 200 })
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

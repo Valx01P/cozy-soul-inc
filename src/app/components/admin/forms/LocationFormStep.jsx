@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback, useRef } from "react"
-import usePropertyFormStore from "../../../stores/propertyFormStore"
+import usePropertyFormStore from "@/app/stores/propertyFormStore"
 import LoadingSpinner from "../../site/LoadingSpinner"
 
 // List of countries for the dropdown

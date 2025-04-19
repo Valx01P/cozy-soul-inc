@@ -668,7 +668,7 @@ export default function PropertyDetail({ params }) {
             </div>
           </div>
           
-          {/* Right Column - Price Card */}
+          {/* Right Column - Price Card, PUT THIS IN A SEPARATE COMPONENT */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-sm p-6 sticky top-8">
               <div className="mb-6">

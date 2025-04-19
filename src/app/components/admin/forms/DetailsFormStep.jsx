@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import usePropertyFormStore from "../../../stores/propertyFormStore"
+import usePropertyFormStore from "@/app/stores/propertyFormStore"
 
 export function DetailsFormStep() {
   // Get state and methods from the store

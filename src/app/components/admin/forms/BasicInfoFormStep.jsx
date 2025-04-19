@@ -2,17 +2,13 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Camera } from "lucide-react"
-import usePropertyFormStore from "../../../stores/propertyFormStore"
+import usePropertyFormStore from "@/app/stores/propertyFormStore"
 
 export function BasicInfoFormStep() {
   // Get state and methods from the store
   const {
     title,
     description,
-    price,
-    price_description,
-    custom_price_description,
-    currency,
     main_image,
     side_image1,
     side_image2,
@@ -25,23 +21,6 @@ export function BasicInfoFormStep() {
     updateBasicInfo,
     updateImagePreview
   } = usePropertyFormStore((state) => state)
-
-  // Currency options
-  const CURRENCIES = [
-    { code: "USD", symbol: "$", name: "US Dollar" },
-    { code: "EUR", symbol: "€", name: "Euro" },
-    { code: "GBP", symbol: "£", name: "British Pound" },
-    { code: "CAD", symbol: "$", name: "Canadian Dollar" },
-    { code: "AUD", symbol: "$", name: "Australian Dollar" },
-  ]
-
-  // Price description options
-  const PRICE_DESCRIPTIONS = [
-    { value: "daily", label: "Daily" },
-    { value: "weekly", label: "Weekly" },
-    { value: "monthly", label: "Monthly" },
-    { value: "custom", label: "Custom..." },
-  ]
 
   // State for camera
   const [isCameraOpen, setIsCameraOpen] = useState(false)
@@ -91,17 +70,10 @@ export function BasicInfoFormStep() {
 
   // Handle basic form input changes
   const handleInputChange = (e) => {
-    const { name, value, type } = e.target
-    
-    if (type === 'number') {
-      updateBasicInfo({
-        [name]: value === "" ? "" : parseFloat(value) || 0
-      })
-    } else {
-      updateBasicInfo({
-        [name]: value
-      })
-    }
+    const { name, value } = e.target
+    updateBasicInfo({
+      [name]: value
+    })
   }
 
   // Handle image upload
@@ -323,93 +295,6 @@ export function BasicInfoFormStep() {
             className="block w-full rounded-lg border border-gray-200 px-4 py-3 focus:border-[var(--primary-red)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-red)]"
             required
           />
-        </div>
-      </div>
-      
-      {/* Pricing Section */}
-      <div className="space-y-6">
-        <h3 className="text-lg font-semibold">Pricing</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-1">
-              Currency
-            </label>
-            <select
-              id="currency"
-              name="currency"
-              value={currency}
-              onChange={handleInputChange}
-              className="block w-full rounded-lg border border-gray-200 px-4 py-3 focus:border-[var(--primary-red)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-red)]"
-              required
-            >
-              {CURRENCIES.map(currency => (
-                <option key={currency.code} value={currency.code}>
-                  {currency.code} ({currency.symbol}) - {currency.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-              Price
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <span className="text-gray-500">
-                  {CURRENCIES.find(c => c.code === currency)?.symbol || '$'}
-                </span>
-              </div>
-              <input
-                type="number"
-                id="price"
-                name="price"
-                min="0"
-                step="0.01"
-                value={price}
-                onChange={handleInputChange}
-                placeholder="0.00"
-                className="block w-full rounded-lg border border-gray-200 pl-8 px-4 py-3 focus:border-[var(--primary-red)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-red)]"
-                required
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label htmlFor="price_description" className="block text-sm font-medium text-gray-700 mb-1">
-              Price Period
-            </label>
-            <div className="space-y-2">
-              <select
-                id="price_description"
-                name="price_description"
-                value={price_description}
-                onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-200 px-4 py-3 focus:border-[var(--primary-red)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-red)]"
-                required
-              >
-                {PRICE_DESCRIPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              
-              {price_description === 'custom' && (
-                <input
-                  type="text"
-                  id="custom_price_description"
-                  name="custom_price_description"
-                  value={custom_price_description}
-                  onChange={handleInputChange}
-                  placeholder="E.g., for 3 days, for weekend..."
-                  className="block w-full rounded-lg border border-gray-200 px-4 py-3 focus:border-[var(--primary-red)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-red)]"
-                  required={price_description === 'custom'}
-                />
-              )}
-            </div>
-          </div>
         </div>
       </div>
       

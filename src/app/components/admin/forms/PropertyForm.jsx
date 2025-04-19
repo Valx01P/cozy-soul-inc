@@ -1,3 +1,4 @@
+// my-app/src/app/components/admin/forms/PropertyForm.jsx
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -7,8 +8,9 @@ import { FormStepper } from './FormStepper'
 import { BasicInfoFormStep } from './BasicInfoFormStep'
 import { LocationFormStep } from './LocationFormStep'
 import { DetailsFormStep } from './DetailsFormStep'
+import { PricingFormStep } from './PricingFormStep'
 import { ConfirmSubmitStep } from './ConfirmSubmitStep'
-import usePropertyFormStore from "../../../stores/propertyFormStore"
+import usePropertyFormStore from '@/app/stores/propertyFormStore'
 
 export default function PropertyForm() {
   const router = useRouter()
@@ -20,7 +22,8 @@ export default function PropertyForm() {
     currentStep, 
     setCurrentStep, 
     nextStep, 
-    prevStep, 
+    prevStep,
+    priceRanges,
     submitProperty,
     submitError,
     setSubmitError,
@@ -32,123 +35,103 @@ export default function PropertyForm() {
     { label: "Basic Info", component: <BasicInfoFormStep /> },
     { label: "Location", component: <LocationFormStep /> },
     { label: "Details", component: <DetailsFormStep /> },
+    { label: "Pricing", component: <PricingFormStep /> },
     { label: "Review", component: <ConfirmSubmitStep /> }
   ]
 
-  // Reset form when component unmounts
+  // Optionally reset when unmounting
   useEffect(() => {
     return () => {
-      // Uncomment this if you want to reset the form state when the component unmounts
       // resetForm()
     }
   }, [resetForm])
 
-  // Log the current amenities state whenever currentStep changes
+  // Log for debugging
   useEffect(() => {
-    const state = usePropertyFormStore.getState();
-    console.log(`Current step changed to: ${currentStep}`);
-    console.log("Current amenities state:", state.amenities);
-  }, [currentStep]);
+    console.log(`Current step changed to: ${currentStep}`)
+    console.log("Current amenities state:", usePropertyFormStore.getState().amenities)
+  }, [currentStep])
 
-  // Handle step validation
+  // Basic step validation
   const validateCurrentStep = () => {
-    // In a real app, you would have more comprehensive validation logic
-    // This is a basic validation to ensure required fields are filled
-
-    const state = usePropertyFormStore.getState();
-    
-    // Log the current state for debugging
-    console.log("Current form state during validation:", state);
+    const state = usePropertyFormStore.getState()
+    console.log("Validating step", currentStep, state)
 
     if (currentStep === 0) {
-      // Basic Info validation
-      if (!state.title || !state.description || !state.price) {
-        toast.error("Please fill out all required fields in Basic Info section");
-        return false;
+      if (!state.title || !state.description) {
+        toast.error("Please fill out all required fields in Basic Info section")
+        return false
+      }
+      if (!state.main_image_url && !state.main_image) {
+        toast.error("Please upload at least a main image for your property")
+        return false
       }
     } else if (currentStep === 1) {
-      // Location validation
       if (!state.location.street || !state.location.city || !state.location.state || !state.location.zip) {
-        toast.error("Please fill out all required fields in Location section");
-        return false;
+        toast.error("Please fill out all required fields in Location section")
+        return false
       }
     } else if (currentStep === 2) {
-      // Details validation
       if (!state.number_of_guests || !state.number_of_bedrooms || !state.number_of_beds) {
-        toast.error("Please fill out all required fields in Details section");
-        return false;
+        toast.error("Please fill out all required fields in Details section")
+        return false
       }
-      
-      // Log the amenities state specifically when validating the Details step
-      console.log("Amenities state during validation:", state.amenities);
-      
-      // Ensure the amenities object persists in the store
+      console.log("Amenities during validation:", state.amenities)
       if (Object.keys(state.amenities || {}).length > 0) {
-        // Force a refresh of the amenities state to ensure it sticks
-        const amenitiesCopy = JSON.parse(JSON.stringify(state.amenities));
-        usePropertyFormStore.setState({ 
-          amenities: amenitiesCopy 
-        });
-        console.log("Refreshed amenities state:", amenitiesCopy);
+        const amenitiesCopy = JSON.parse(JSON.stringify(state.amenities))
+        usePropertyFormStore.setState({ amenities: amenitiesCopy })
+        console.log("Refreshed amenities state:", amenitiesCopy)
+      }
+    } else if (currentStep === 3) {
+      if (state.priceRanges.length === 0) {
+        toast.error("Please add at least one price range for your property")
+        return false
       }
     }
-    // No validation needed for the confirmation step
-    
-    return true;
+    return true
   }
 
-  // Handle form submission
+  // Handle form submission & final step
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // If we're not on the last step, validate and move to the next one
+    e.preventDefault()
+
+    // If not on last step, just advance
     if (currentStep < steps.length - 1) {
-      if (validateCurrentStep()) {
-        nextStep();
-      }
-      return;
+      if (validateCurrentStep()) nextStep()
+      return
     }
-    
-    // We're on the last step (confirmation), so submit the form
+
+    // Last step: actually submit
     try {
-      setIsSubmitting(true);
-      setSubmitError(null);
-      
-      // Submit the property
-      const result = await submitProperty();
-      
-      if (result && result.success) {
-        toast.success(mode === 'edit' ? 'Property updated successfully!' : 'Property created successfully!');
-        
-        // Redirect to the admin listings page
-        setTimeout(() => {
-          router.push('/admin');
-        }, 1500);
-      } else {
-        throw new Error(result?.error || 'Failed to submit property');
-      }
+      setIsSubmitting(true)
+      setSubmitError(null)
+
+      // submitProperty() throws on failure
+      await submitProperty()
+
+      toast.success(
+        mode === 'edit' 
+          ? 'Property updated successfully!' 
+          : 'Property created successfully!'
+      )
+
+      // Redirect after a short delay
+      setTimeout(() => router.push('/admin'), 1500)
+
     } catch (error) {
-      console.error("Error submitting property:", error);
-      toast.error(error.message || "Failed to submit property. Please try again.");
-      setSubmitError(error.message || "Failed to submit property");
+      console.error("Error submitting property:", error)
+      toast.error(error.message || "Failed to submit property. Please try again.")
+      setSubmitError(error.message || "Failed to submit property")
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
   }
 
-  // Handle navigating to a specific step
+  // Navigation via stepper
   const handleStepClick = (stepIndex) => {
-    // First validate the current step before allowing to navigate
-    if (stepIndex > currentStep) {
-      if (!validateCurrentStep()) {
-        return;
-      }
-    }
-    
-    // Only allow navigating to steps that the user has already been to
-    // or the next step
+    if (stepIndex > currentStep && !validateCurrentStep()) return
     if (stepIndex <= currentStep + 1) {
-      setCurrentStep(stepIndex);
+      setCurrentStep(stepIndex)
     }
   }
 
@@ -170,18 +153,14 @@ export default function PropertyForm() {
         onStepClick={handleStepClick} 
       />
       
-      {/* Form */}
+      {/* Multi-step Form */}
       <form onSubmit={handleSubmit} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-8 mt-4">
-        <h2 className="text-xl font-bold mb-6">
-          {steps[currentStep].label}
-        </h2>
+        <h2 className="text-xl font-bold mb-6">{steps[currentStep].label}</h2>
         
-        {/* Current Step Content */}
         <div className="min-h-[400px]">
           {steps[currentStep].component}
         </div>
         
-        {/* Error message */}
         {submitError && (
           <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg">
             <p className="font-medium">Error:</p>
@@ -189,18 +168,16 @@ export default function PropertyForm() {
           </div>
         )}
         
-        {/* Navigation Buttons */}
         <div className="flex justify-between pt-6 border-t border-gray-100">
           <button
             type="button"
             onClick={prevStep}
             disabled={currentStep === 0 || isSubmitting}
-            className={`px-6 py-3 rounded-lg font-medium transition
-              ${(currentStep === 0 || isSubmitting)
+            className={`px-6 py-3 rounded-lg font-medium transition ${
+              (currentStep === 0 || isSubmitting)
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-              }
-            `}
+            }`}
           >
             Back
           </button>
@@ -208,19 +185,34 @@ export default function PropertyForm() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`px-6 py-3 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 transition
-              ${currentStep === steps.length - 1
-                ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500' 
+            className={`px-6 py-3 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 transition ${
+              currentStep === steps.length - 1
+                ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500'
                 : 'bg-[var(--primary-red)] text-white hover:bg-[var(--primary-red-hover)] focus:ring-[var(--primary-red)]'
-              }
-              ${isSubmitting ? 'opacity-75 cursor-not-allowed' : ''}
-            `}
+            } ${isSubmitting ? 'opacity-75 cursor-not-allowed' : ''}`}
           >
             {isSubmitting ? (
               <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 
+                       7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
                 </svg>
                 {currentStep < steps.length - 1 ? 'Processing...' : 'Submitting...'}
               </span>
