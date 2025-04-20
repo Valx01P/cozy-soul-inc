@@ -5,8 +5,6 @@ import Image from "next/image"
 import Link from "next/link"
 import { ChevronLeft, Home, Users, Bed, Bath, MapPin, MessageCircle, Camera, ChevronRight, ImageIcon } from "lucide-react"
 import { use } from "react"
-import listingService from "@/app/services/api/listingService"
-import PropertyPriceCard from "../../../components/site/PropertyPriceCard"
 
 // This component properly formats property descriptions
 function PropertyDescription({ description, maxLines = 5 }) {
@@ -67,8 +65,8 @@ function PropertyDescription({ description, maxLines = 5 }) {
   );
 }
 
-
-export default function PropertyPage({ params }) {
+export default function PropertyDetail({ params }) {
+  // Properly unwrap params using React.use()
   const resolvedParams = use(params)
   const { id } = resolvedParams
   
@@ -91,8 +89,13 @@ export default function PropertyPage({ params }) {
     async function fetchProperty() {
       try {
         setLoading(true)
-        // Use listingService instead of direct fetch
-        const data = await listingService.getListingById(id)
+        const response = await fetch(`/api/listings/${id}`)
+        
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`)
+        }
+        
+        const data = await response.json()
         setProperty(data)
         
         // Set active image to the first available image or placeholder
@@ -188,6 +191,10 @@ export default function PropertyPage({ params }) {
   const handleGoToListings = () => {
     router.push('/')
   }
+  
+  const handleContactHost = () => {
+    router.push(`/listings/${id}/contact`)
+  }
 
   // Function to format amenities by category
   const formatAmenities = () => {
@@ -197,6 +204,11 @@ export default function PropertyPage({ params }) {
       category,
       items: Array.isArray(items) ? items : []
     }))
+  }
+  
+  // Function to format the price with commas
+  const formatPrice = (price) => {
+    return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
   }
   
   // Handle keyboard navigation in the gallery
@@ -486,7 +498,7 @@ export default function PropertyPage({ params }) {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen pt-16">
+      <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[var(--primary-red)]"></div>
       </div>
     )
@@ -494,7 +506,7 @@ export default function PropertyPage({ params }) {
 
   if (error || !property) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-12 min-h-screen pt-20">
+      <div className="max-w-7xl mx-auto px-4 py-12 min-h-screen">
         <button 
           type="button"
           onClick={handleGoToListings}
@@ -519,10 +531,10 @@ export default function PropertyPage({ params }) {
   }
 
   return (
-    <main className="pt-6 md:pt-8">
+    <>
       {showAllPhotos && <PhotoGallery />}
       
-      <div className="max-w-7xl mx-auto px-4 pb-12">
+      <div className="max-w-7xl mx-auto px-4 py-6 md:py-12">
         {/* Navigation */}
         <button 
           type="button"
@@ -656,12 +668,82 @@ export default function PropertyPage({ params }) {
             </div>
           </div>
           
-          {/* Right Column - Price Card - Now using our new component */}
+          {/* Right Column - Price Card, PUT THIS IN A SEPARATE COMPONENT */}
           <div className="lg:col-span-1">
-            <PropertyPriceCard property={property} id={id} />
+            <div className="bg-white rounded-xl shadow-sm p-6 sticky top-8">
+              <div className="mb-6">
+                <div className="flex items-baseline">
+                  <span className="text-2xl font-bold text-gray-900">
+                    {property.currency === 'USD' ? '$' : property.currency === 'EUR' ? '€' : property.currency === 'GBP' ? '£' : '$'}
+                    {formatPrice(property.price)}
+                  </span>
+                  <span className="text-gray-600 ml-2"> / {property.price_description || 'night'}</span>
+                </div>
+              </div>
+              
+              {/* Contact Host Button */}
+              <Link href={`/listings/${id}/contact`}>
+                <button 
+                  type="button"
+                  onClick={handleContactHost}
+                  className="w-full bg-[var(--primary-red)] hover:bg-[var(--primary-red-hover)] hover:cursor-pointer text-white py-3 px-4 rounded-lg font-medium mb-4 transition-colors flex items-center justify-center"
+                >
+                  <MessageCircle size={18} className="mr-2" />
+                  Contact Host
+                </button>
+              </Link>
+              
+              {/* Property Highlights */}
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <h3 className="font-medium text-gray-900 mb-3">Property highlights</h3>
+                <ul className="space-y-3">
+                  <li className="flex items-start">
+                    <MapPin size={16} className="text-[var(--primary-red)] mr-2 mt-1" />
+                    <span className="text-gray-700">Perfect location in {property.location.city || 'the city'}</span>
+                  </li>
+                  <li className="flex items-start">
+                    <Users size={16} className="text-[var(--primary-red)] mr-2 mt-1" />
+                    <span className="text-gray-700">Ideal for groups of {property.number_of_guests} or less</span>
+                  </li>
+                  <li className="flex items-start">
+                    <Home size={16} className="text-[var(--primary-red)] mr-2 mt-1" />
+                    <span className="text-gray-700">{property.number_of_bedrooms} bedroom{property.number_of_bedrooms !== 1 ? 's' : ''} with {property.number_of_beds} bed{property.number_of_beds !== 1 ? 's' : ''}</span>
+                  </li>
+                </ul>
+              </div>
+              
+              {/* Host Info */}
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <div className="flex items-center">
+                  <div className="w-12 h-12 overflow-hidden bg-[#FFE5EC] rounded-full mr-4 flex items-center justify-center">
+                    {property.host?.profile_image ? (
+                      <Image 
+                        src={property.host.profile_image} 
+                        alt={`Host ${property.host.first_name}`}
+                        width={48}
+                        height={48}
+                        className="object-cover w-full h-full" 
+                      />
+                    ) : (
+                      <span className="text-[#FF0056] font-medium text-lg">
+                        {property.host?.first_name?.charAt(0) || 'A'}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-medium">
+                      Hosted by {property.host?.first_name} {property.host?.last_name}
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      Host since {property.host?.host_since || '2023'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </main>
+    </>
   )
 }

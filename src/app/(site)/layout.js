@@ -1,7 +1,7 @@
 'use client';
 
-import Navbar from '../components/minimal/site/Navbar'
-import Footer from '../components/minimal/site/Footer'
+import Navbar from '../components/site/Navbar'
+import Footer from '../components/site/Footer'
 
 export default function SiteLayout({ children }) {
 

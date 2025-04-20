@@ -41,22 +41,28 @@ const emailService = {
       throw error
     }
   },
-  sendVerificationEmail: async (emailData) => {
+  getEmailLogs: async () => {
+  },
+  sendReservationApprovalEmail: async (emailData) => {
+  },
+  sendReservationCancellationEmail: async (emailData) => {
+  },
+  sendReservationPaymentFailedEmail: async (emailData) => {
+  },
+  sendReservationPaymentMissingEmail: async (emailData) => {
+  },
+  sendReservationPaymentPlanEmail: async (emailData) => {
+  },
+  sendReservationPaymentRefundEmail: async (emailData) => {
+  },
+  sendReservationPaymentReminderEmail: async (emailData) => {
+  },
+  sendReservationPaymentSuccessEmail: async (emailData) => {
+  },
+  sendReservationRejectedEmail: async (emailData) => {
   },
   sendReservationRequestEmail: async (emailData) => {
   },
-  sendReservationApprovedEmail: async (emailData) => {
-  },
-  sendReservationCancelledEmail: async (emailData) => {
-  },
-  sendReservationDeclinedEmail: async (emailData) => {
-  },
-  sendPaymentPlanEmail: async (emailData) => {
-  },
-  sendPaymentReminderEmail: async (emailData) => {
-  },
-  sendPaymentSuccessEmail: async (emailData) => {
-  },
-  sendMissingPaymentEmail: async (emailData) => {
+  sendVerificationEmail: async (emailData) => {
   }
 }

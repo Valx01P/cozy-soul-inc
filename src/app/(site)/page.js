@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import listingService from '@/app/services/api/listingService';
-import ListingCard from "../components/minimal/site/ListingCard";
+import ListingCard from "../components/site/ListingCard";
 
 export default function HomePage() {
   const [listings, setListings] = useState([]);

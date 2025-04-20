@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react"
 import usePropertyFormStore from "@/app/stores/propertyFormStore"
-import LoadingSpinner from "../../site/LoadingSpinner"
+import LoadingSpinner from "../../archive/LoadingSpinner"
 
 // List of countries for the dropdown
 const COUNTRIES = [

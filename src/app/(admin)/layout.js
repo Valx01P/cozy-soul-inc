@@ -1,7 +1,7 @@
 'use client';
 
 import react from "react"
-import Loading from "../components/site/Loading"
+import Loading from "../components/archive/Loading"
 import AdminNavbar from '../components/admin/AdminNav'
 
 export default function AdminLayout({ children }) {
