@@ -14,22 +14,27 @@ export default function AuthProvider({ children }) {
   useEffect(() => {
     const initialize = async () => {
       try {
-
-        if (user) {
-          await refreshToken()
-        }
+        // Always attempt to refresh tokens on initialization
+        // This will update the tokens with the latest role from the database
+        await refreshToken()
         
+        // Then check auth to update the user state
         await checkAuth()
       } catch (error) {
         console.error("Auth initialization error:", error)
+        // Even if refresh fails, still try to check auth
+        try {
+          await checkAuth()
+        } catch (checkError) {
+          console.error("Auth check error after refresh failure:", checkError)
+        }
       } finally {
         setIsInitialized(true)
       }
     }
 
     initialize()
-  }, [])
-
+  }, [refreshToken, checkAuth])
 
   useEffect(() => {
     if (!isInitialized) return
@@ -38,10 +43,9 @@ export default function AuthProvider({ children }) {
         
     const refreshInterval = setInterval(async () => {
       try {
-        await refreshToken() // authomatically handles logout if refresh token is invalid
+        await refreshToken() // automatically handles logout if refresh token is invalid
       } catch (error) {
         console.error("Token refresh error:", error)
-
       }
     }, 9 * 60 * 1000) // Refresh token every 9 minutes
     

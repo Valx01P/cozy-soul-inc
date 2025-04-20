@@ -1,29 +1,30 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { 
-  format, 
-  addMonths, 
-  subMonths, 
-  startOfMonth, 
-  endOfMonth, 
-  eachDayOfInterval, 
-  isSameDay, 
-  isBefore, 
-  addDays, 
+import {
+  format,
+  addMonths,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameDay,
+  isBefore,
+  addDays,
   startOfDay,
   isValid,
   parseISO
 } from 'date-fns';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  DollarSign, 
-  X, 
-  AlertTriangle, 
-  ArrowRight, 
-  Trash, 
-  Edit 
+import {
+  ChevronLeft,
+  ChevronRight,
+  DollarSign,
+  X,
+  AlertTriangle,
+  ArrowRight,
+  Trash,
+  Edit,
+  Moon // Using Moon icon for nights
 } from 'lucide-react';
 import usePropertyFormStore from "@/app/stores/propertyFormStore";
 
@@ -40,7 +41,14 @@ const safeParseDate = (dateString) => {
 };
 
 export function PricingFormStep() {
-  const { priceRanges, updatePriceRanges, addPriceRange, deletePriceRange } = usePropertyFormStore(state => state);
+  const {
+    priceRanges,
+    updatePriceRanges,
+    addPriceRange,
+    deletePriceRange,
+    minimum_stay, // Get minimum_stay state
+    updateMinimumStay // Get update action for minimum_stay
+  } = usePropertyFormStore(state => state);
 
   // Calendar view state
   const [currentDate, setCurrentDate] = useState(startOfDay(new Date())); // Use start of day for consistency
@@ -178,7 +186,7 @@ export function PricingFormStep() {
   // Get the details of the range a specific date belongs to
   const getRangeForDate = (date) => {
     const normalizedDate = startOfDay(date);
-    return parsedPriceRanges.find(range => 
+    return parsedPriceRanges.find(range =>
         normalizedDate >= range.startDate && normalizedDate <= range.endDate
     );
   };
@@ -511,7 +519,36 @@ export function PricingFormStep() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold leading-7 text-gray-900">Pricing and Availability Calendar</h2>
+      {/* Minimum Stay Input */}
+      <div className="p-4 border border-gray-200 bg-white rounded-lg shadow-sm">
+        <label htmlFor="minimum_stay" className="block text-sm font-medium text-gray-700 mb-1">
+          Minimum Stay (Nights)
+        </label>
+        <div className="relative mt-1 rounded-md shadow-sm w-full max-w-xs">
+           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+             <Moon size={16} className="text-gray-400" aria-hidden="true" />
+           </div>
+           <input
+             type="number"
+             id="minimum_stay"
+             name="minimum_stay"
+             value={minimum_stay}
+             onChange={(e) => updateMinimumStay(e.target.value)}
+             min="1"
+             step="1"
+             className="block w-full rounded-md border-0 py-1.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+             placeholder="e.g., 3"
+             required
+           />
+         </div>
+         <p className="mt-2 text-xs text-gray-500">
+           Set the minimum number of nights guests must book. Default is 1 night.
+         </p>
+      </div>
+
+
+      {/* Existing Pricing and Availability Section */}
+      <h2 className="text-xl font-semibold leading-7 text-gray-900 pt-4 border-t mt-6">Pricing and Availability Calendar</h2>
       <p className="mt-1 text-sm leading-6 text-gray-600">
         Click dates on the calendar to define periods. Set a price per night for available periods or mark them as unavailable. Click an existing range to modify it.
       </p>

@@ -38,6 +38,7 @@ export async function GET(request, { params }) {
           id,
           image_url
         ),
+        minimum_stay,
         number_of_guests, 
         number_of_bedrooms, 
         number_of_beds, 
@@ -147,6 +148,7 @@ export async function GET(request, { params }) {
       side_image1: property.side_image1,
       side_image2: property.side_image2,
       extra_images: extraImages,
+      minimum_stay: property.minimum_stay,
       location,
       number_of_guests: property.number_of_guests,
       number_of_bedrooms: property.number_of_bedrooms,
@@ -236,6 +238,7 @@ async function deleteImageFromStorage(imageUrl) {
     "latitude": 34.0261,
     "longitude": -118.7801
   },
+  "minimum_stay": 3,
   "number_of_guests": 10,
   "number_of_bedrooms": 5,
   "number_of_beds": 6,
@@ -485,6 +488,7 @@ export async function PUT(request, { params }) {
         main_image: data.main_image || null,
         side_image1: data.side_image1 || null,
         side_image2: data.side_image2 || null,
+        minimum_stay: data.minimum_stay || 1,
         number_of_guests: data.number_of_guests,
         number_of_bedrooms: data.number_of_bedrooms,
         number_of_beds: data.number_of_beds,

@@ -7,6 +7,8 @@ import {
   setAuthCookies,
   getAuthTokens 
 } from '@/app/lib/auth'
+import supabase from '@/app/services/supabase'
+
 
 /*
 CREATE TABLE users (
@@ -43,34 +45,43 @@ CREATE TABLE users (
 */
 export async function POST() {
   try {
-
     const { refreshToken } = await getAuthTokens()
     
     if (!refreshToken) {
       return NextResponse.json({ error: 'Refresh token is required' }, { status: 401 })
     }
     
-
     const payload = await verifyRefreshToken(refreshToken)
     
     if (!payload || !payload.user_id) {
       return NextResponse.json({ error: 'Invalid refresh token' }, { status: 401 })
     }
     
-
+    // Query the database to get the latest user data
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, first_name, last_name, email, role, email_verified, identity_verified')
+      .eq('id', payload.user_id)
+      .single()
+    
+    if (userError) {
+      console.error('Error fetching user data during token refresh:', userError)
+      return NextResponse.json({ error: 'Failed to refresh tokens' }, { status: 500 })
+    }
+    
+    // Create a new payload with the latest user data from the database
     const newPayload = {
-      user_id: payload.user_id,
-      first_name: payload.first_name,
-      last_name: payload.last_name,
-      email: payload.email,
-      role: payload.role,
-      email_verified: payload.email_verified,
-      identity_verified: payload.identity_verified
+      user_id: user.id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      role: user.role, // Now using the latest role from database
+      email_verified: user.email_verified,
+      identity_verified: user.identity_verified
     }
     
     const newAccessToken = await generateAccessToken(newPayload)
     const newRefreshToken = await generateRefreshToken(newPayload)
-
 
     await setAuthCookies(newAccessToken, newRefreshToken)
 
@@ -80,6 +91,7 @@ export async function POST() {
 
     return NextResponse.json(response, { status: 200 })
   } catch (error) {
+    console.error('Refresh token error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

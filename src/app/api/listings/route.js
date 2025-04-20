@@ -26,7 +26,7 @@ export async function GET(request) {
         id, 
         host_id, 
         title, 
-        description, 
+        description,
         propertyavailability(
           id,
           start_date,
@@ -42,6 +42,7 @@ export async function GET(request) {
           id,
           image_url
         ),
+        minimum_stay,
         number_of_guests, 
         number_of_bedrooms, 
         number_of_beds, 
@@ -171,6 +172,7 @@ export async function GET(request) {
         side_image1: property.side_image1,
         side_image2: property.side_image2,
         extra_images: extraImages,
+        minimum_stay: property.minimum_stay,
         location,
         number_of_guests: property.number_of_guests,
         number_of_bedrooms: property.number_of_bedrooms,
@@ -226,6 +228,7 @@ export async function GET(request) {
     "latitude": 34.0259,
     "longitude": -118.7798
   },
+  "minimum_stay": 3,
   "number_of_guests": 8,
   "number_of_bedrooms": 4,
   "number_of_beds": 5,
@@ -430,6 +433,7 @@ export async function POST(request) {
         main_image: data.main_image || null,
         side_image1: data.side_image1 || null,
         side_image2: data.side_image2 || null,
+        minimum_stay: data.minimum_stay || 1,
         location_id: location[0].id,
         number_of_guests: data.number_of_guests,
         number_of_bedrooms: data.number_of_bedrooms,
@@ -596,6 +600,7 @@ export async function POST(request) {
           id,
           image_url
         ),
+        minimum_stay,
         number_of_guests, 
         number_of_bedrooms, 
         number_of_beds, 
@@ -696,6 +701,7 @@ export async function POST(request) {
       side_image1: createdProperty.side_image1,
       side_image2: createdProperty.side_image2,
       extra_images: extraImages,
+      minimum_stay: createdProperty.minimum_stay,
       location: propertyLocation,
       number_of_guests: createdProperty.number_of_guests,
       number_of_bedrooms: createdProperty.number_of_bedrooms,

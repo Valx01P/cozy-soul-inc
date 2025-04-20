@@ -11,7 +11,7 @@ const usePropertyFormStore = create((set, get) => ({
   // Form mode (create or edit)
   mode: 'create',
   propertyId: null,
-  
+
   // Basic Info form data
   title: "",
   description: "",
@@ -19,20 +19,20 @@ const usePropertyFormStore = create((set, get) => ({
   side_image1: null,
   side_image2: null,
   extra_images: [],
-  
+
   // Image URLs (for uploaded images or existing images)
   main_image_url: "",
   side_image1_url: "",
   side_image2_url: "",
   extra_image_urls: [],
-  
+
   // Track deleted images to be removed from storage
   deleted_image_urls: [],
-  
-  // Pricing and availability data - matches propertyavailability table structure
-  // Stores 'yyyy-MM-dd' strings for startDate and endDate (inclusive)
-  priceRanges: [], 
-  
+
+  // Pricing and availability data
+  priceRanges: [], // Stores 'yyyy-MM-dd' strings for startDate and endDate (inclusive)
+  minimum_stay: 1, // NEW: Minimum stay field, default to 1 night
+
   // Location form data
   location: {
     street: "",
@@ -44,7 +44,7 @@ const usePropertyFormStore = create((set, get) => ({
     latitude: 25.7617,
     longitude: -80.1918
   },
-  
+
   // Details form data
   number_of_guests: 1,
   number_of_bedrooms: 1,
@@ -52,13 +52,13 @@ const usePropertyFormStore = create((set, get) => ({
   number_of_bathrooms: 1,
   additional_info: "",
   amenities: {},
-  
+
   // Form navigation state
   currentStep: 0,
-  totalSteps: 5, // Updated to 5 steps with new pricing step
+  totalSteps: 5, // Still 5 steps: Basic Info, Location, Details, Pricing, Confirm
   isSubmitting: false,
   submitError: null,
-  
+
   // Image previews (not part of final submission data)
   imagePreviews: {
     main_image: null,
@@ -66,7 +66,7 @@ const usePropertyFormStore = create((set, get) => ({
     side_image2: null,
     extra_images: []
   },
-  
+
   /**
    * Initialize form for editing an existing property
    * @param {string|number} propertyId - ID of property to edit
@@ -81,9 +81,9 @@ const usePropertyFormStore = create((set, get) => ({
         propertyId
       };
     }
-    
+
     console.log("Setting edit mode with property data:", propertyData);
-    
+
     // Initialize image previews from existing URLs
     const imagePreviewsData = {
       main_image: propertyData.main_image || null,
@@ -91,16 +91,16 @@ const usePropertyFormStore = create((set, get) => ({
       side_image2: propertyData.side_image2 || null,
       extra_images: Array.isArray(propertyData.extra_images) ? [...propertyData.extra_images] : []
     };
-    
+
     // Transform amenities format if needed
     // From API: { category: [ {name, svg}, ... ] }
     // To store: { category: { name: true, ... } }
     let formattedAmenities = {};
-    
+
     if (propertyData.amenities) {
       Object.entries(propertyData.amenities).forEach(([category, amenitiesList]) => {
         formattedAmenities[category] = {};
-        
+
         // Handle both array and object formats
         if (Array.isArray(amenitiesList)) {
           amenitiesList.forEach(amenity => {
@@ -116,9 +116,9 @@ const usePropertyFormStore = create((set, get) => ({
         }
       });
     }
-    
+
     console.log("Formatted amenities for edit mode:", formattedAmenities);
-    
+
     // Initialize price ranges from property data (API provides 'availability')
     // Ensure consistency in naming (startDate/endDate vs start_date/end_date)
     const priceRangesData = (propertyData.availability || []).map((avail, index) => ({
@@ -131,7 +131,7 @@ const usePropertyFormStore = create((set, get) => ({
     }));
 
     console.log("Formatted priceRanges for edit mode:", priceRangesData);
-    
+
     // Set all form fields from property data
     return {
       ...state,
@@ -144,6 +144,7 @@ const usePropertyFormStore = create((set, get) => ({
       side_image2_url: propertyData.side_image2 || "",
       extra_image_urls: Array.isArray(propertyData.extra_images) ? [...propertyData.extra_images] : [],
       priceRanges: priceRangesData, // Use formatted price ranges
+      minimum_stay: propertyData.minimum_stay || 1, // Populate minimum_stay
       deleted_image_urls: [], // Reset deleted images tracking
       location: {
         street: propertyData.location?.street || "",
@@ -164,7 +165,7 @@ const usePropertyFormStore = create((set, get) => ({
       imagePreviews: imagePreviewsData
     };
   }),
-  
+
   /**
    * Reset form to create mode
    */
@@ -175,15 +176,15 @@ const usePropertyFormStore = create((set, get) => ({
         URL.revokeObjectURL(url);
       }
     };
-    
+
     cleanUpUrl(state.imagePreviews.main_image);
     cleanUpUrl(state.imagePreviews.side_image1);
     cleanUpUrl(state.imagePreviews.side_image2);
-    
+
     if (state.imagePreviews.extra_images && state.imagePreviews.extra_images.length > 0) {
       state.imagePreviews.extra_images.forEach(url => cleanUpUrl(url));
     }
-    
+
     return {
       ...state,
       mode: 'create',
@@ -200,6 +201,7 @@ const usePropertyFormStore = create((set, get) => ({
       side_image2_url: "",
       extra_image_urls: [],
       priceRanges: [],
+      minimum_stay: 1, // Reset minimum_stay
       deleted_image_urls: [],
       location: {
         street: "",
@@ -228,7 +230,7 @@ const usePropertyFormStore = create((set, get) => ({
       }
     };
   }),
-  
+
   /**
    * Update basic info form data
    * @param {Object} data - New data to update
@@ -236,7 +238,7 @@ const usePropertyFormStore = create((set, get) => ({
   updateBasicInfo: (data) => set((state) => {
     // Track URLs of removed images to delete them from storage later
     const updatedDeletedUrls = [...state.deleted_image_urls];
-    
+
     // If an image is being removed (set to null) and it had a URL, add it to deleted_image_urls
     if (data.main_image === null && state.main_image_url) {
         if (!updatedDeletedUrls.includes(state.main_image_url)) {
@@ -281,9 +283,9 @@ const usePropertyFormStore = create((set, get) => ({
         extra_image_urls: data.extra_image_urls !== undefined ? data.extra_image_urls : state.extra_image_urls,
         deleted_image_urls: updatedDeletedUrls
     };
-}),
+  }),
 
-  
+
   /**
    * Update pricing information - fully replace all price ranges
    * @param {Array} priceRanges - Array of price range objects {id, startDate, endDate, isAvailable, price, availability_type}
@@ -312,6 +314,16 @@ const usePropertyFormStore = create((set, get) => ({
   }),
 
   /**
+   * Update the minimum stay value
+   * @param {number} value - The new minimum stay value
+   */
+  updateMinimumStay: (value) => set((state) => {
+    const intValue = parseInt(value);
+    // Ensure minimum stay is at least 1
+    return { ...state, minimum_stay: isNaN(intValue) || intValue < 1 ? 1 : intValue };
+  }),
+
+  /**
    * Update location form data
    * @param {Object} data - New location data
    */
@@ -322,7 +334,7 @@ const usePropertyFormStore = create((set, get) => ({
       ...data
     }
   })),
-  
+
   /**
    * Update details form data
    * @param {Object} data - New details data
@@ -331,7 +343,7 @@ const usePropertyFormStore = create((set, get) => ({
     ...state,
     ...data
   })),
-  
+
   /**
    * Update a specific amenity in the amenities object
    * @param {string} category - Amenity category
@@ -340,38 +352,38 @@ const usePropertyFormStore = create((set, get) => ({
    */
   updateAmenity: (category, amenityName, value) => set((state) => {
     const updatedAmenities = JSON.parse(JSON.stringify(state.amenities || {})); // Deep clone
-    
+
     // Initialize the category if it doesn't exist
     if (!updatedAmenities[category]) {
       updatedAmenities[category] = {};
     }
-    
+
     // Set or toggle the amenity value
     if (value !== undefined) {
       updatedAmenities[category][amenityName] = value;
     } else {
       updatedAmenities[category][amenityName] = !updatedAmenities[category][amenityName];
     }
-    
+
     // Remove the property if it's false to keep the data clean
     if (updatedAmenities[category][amenityName] === false) {
       delete updatedAmenities[category][amenityName];
-      
+
       // Remove empty categories
       if (Object.keys(updatedAmenities[category]).length === 0) {
         delete updatedAmenities[category];
       }
     }
-    
-    console.log(`Updated amenity ${category}/${amenityName} to:`, 
+
+    console.log(`Updated amenity ${category}/${amenityName} to:`,
       updatedAmenities[category]?.[amenityName]);
-    
+
     return {
       ...state,
       amenities: updatedAmenities
     };
   }),
-  
+
   /**
    * Update image previews for display in the form
    * @param {string} imageType - Type of image (main_image, side_image1, side_image2, extra_images)
@@ -422,7 +434,7 @@ const usePropertyFormStore = create((set, get) => ({
     };
   }),
 
-  
+
   /**
    * Delete images from Supabase storage
    * @param {Array} urls - Array of image URLs to delete
@@ -430,12 +442,12 @@ const usePropertyFormStore = create((set, get) => ({
    */
   deleteImages: async (urls) => {
     if (!urls || !urls.length) return true;
-    
+
     const uniqueUrls = [...new Set(urls.filter(url => url))]; // Remove null/empty and duplicates
     if (!uniqueUrls.length) return true;
 
     console.log('Attempting to delete images from storage:', uniqueUrls);
-    
+
     // Array to store promises for all delete operations
     const deletePromises = uniqueUrls.map(async (url) => {
       try {
@@ -456,13 +468,13 @@ const usePropertyFormStore = create((set, get) => ({
               },
               body: JSON.stringify({ filepath: filePath }) // Send the path, not the full URL
           });
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`Failed to delete image path ${filePath} (from URL ${url}): ${response.status} ${errorText}`);
           return false;
         }
-        
+
         console.log(`Successfully deleted image path: ${filePath}`);
         return true;
       } catch (error) {
@@ -470,14 +482,14 @@ const usePropertyFormStore = create((set, get) => ({
         return false;
       }
     });
-    
+
     // Wait for all delete operations to complete
     const results = await Promise.all(deletePromises);
-    
+
     // Return true if all images were deleted successfully
     return results.every(result => result);
   },
-  
+
   /**
    * Upload a single image to Supabase storage
    * @param {File} file - Image file to upload
@@ -485,32 +497,32 @@ const usePropertyFormStore = create((set, get) => ({
    */
   uploadImage: async (file) => {
     if (!file) return null;
-    
+
     const formData = new FormData();
     formData.append('images', file); // API expects 'images' field
-    
+
     try {
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData
       });
-      
+
       const result = await response.json();
-  
+
       if (!response.ok) {
         console.error("Upload error response:", result);
         throw new Error(result.error || 'Failed to upload image: Server returned status ' + response.status);
       }
-      
+
       console.log("Upload success result:", result);
-      
+
       // Handle both formats: direct array or {urls: [...]} object
       if (Array.isArray(result) && result.length > 0) {
         return result[0]; // API is returning array directly
       } else if (result.urls && Array.isArray(result.urls) && result.urls.length > 0) {
         return result.urls[0]; // API returns object with urls property
       }
-      
+
       console.error('Unexpected upload response format:', result);
       throw new Error('Invalid response format from upload API');
     } catch (error) {
@@ -519,16 +531,16 @@ const usePropertyFormStore = create((set, get) => ({
       return null;
     }
   },
-  
+
   /**
    * Upload all images in the form and get their URLs
    * @returns {Promise<boolean>} - Whether all uploads were successful
    */
   uploadAllImages: async () => {
-      const { 
+      const {
           main_image, side_image1, side_image2, extra_images,
           main_image_url, side_image1_url, side_image2_url, extra_image_urls,
-          deleted_image_urls, uploadImage, deleteImages 
+          deleted_image_urls, uploadImage, deleteImages
       } = get(); // Get current state and actions
 
       set({ isSubmitting: true, submitError: null });
@@ -606,7 +618,7 @@ const usePropertyFormStore = create((set, get) => ({
           // Wait for all uploads to complete
           await Promise.all(uploadPromises);
           const uploadedExtraUrls = await Promise.all(extraImageUploadPromises);
-          
+
           // Add successfully uploaded extra image URLs to the final list
           finalImageUrls.extra_image_urls = [...finalExtraUrls, ...uploadedExtraUrls.filter(url => url !== null)];
 
@@ -628,7 +640,7 @@ const usePropertyFormStore = create((set, get) => ({
               main_image: null, // Clear File objects after upload
               side_image1: null,
               side_image2: null,
-              extra_images: [], 
+              extra_images: [],
               deleted_image_urls: [], // Crucial: Clear deleted images array AFTER successful deletion
               isSubmitting: false // Set submitting false here or in the calling function? Let's do it here for now.
           });
@@ -637,14 +649,14 @@ const usePropertyFormStore = create((set, get) => ({
           return true;
       } catch (error) {
           console.error('Error processing images:', error);
-          set({ 
-              isSubmitting: false, 
-              submitError: 'Failed to process images: ' + error.message 
+          set({
+              isSubmitting: false,
+              submitError: 'Failed to process images: ' + error.message
           });
           return false;
       }
   },
-  
+
   /**
    * Generate the final property data for submission to API
    * NOTE: Assumes images have been uploaded and URLs are set in the state by calling uploadAllImages() before this.
@@ -652,8 +664,8 @@ const usePropertyFormStore = create((set, get) => ({
    */
   getFinalPropertyData: async () => {
     // Get the current state AFTER potential image uploads
-    const state = get(); 
-    
+    const state = get();
+
     console.log("Generating final property data. Current state:", state);
 
     // Transform amenities to API format expected by backend
@@ -674,7 +686,7 @@ const usePropertyFormStore = create((set, get) => ({
         }
     });
      console.log("Formatted amenities for API:", amenitiesForApi);
-    
+
     // Format availability data according to database/API structure
     // API expects: [{ start_date, end_date, is_available, price, availability_type }, ...]
     const availabilityData = state.priceRanges.map(range => ({
@@ -685,7 +697,7 @@ const usePropertyFormStore = create((set, get) => ({
       availability_type: range.availability_type // Already set correctly in PricingFormStep
     }));
     console.log("Formatted availability for API:", availabilityData);
-    
+
     // Create the final property data payload
     const propertyData = {
       title: state.title,
@@ -706,6 +718,7 @@ const usePropertyFormStore = create((set, get) => ({
         latitude: state.location.latitude, // Should be validated earlier
         longitude: state.location.longitude // Should be validated earlier
       },
+      minimum_stay: parseInt(state.minimum_stay) || 1, // Include minimum_stay
       number_of_guests: parseInt(state.number_of_guests) || 1,
       number_of_bedrooms: parseInt(state.number_of_bedrooms) || 1,
       number_of_beds: parseInt(state.number_of_beds) || 1,
@@ -714,11 +727,11 @@ const usePropertyFormStore = create((set, get) => ({
       amenities: amenitiesForApi, // Use the formatted amenities
       is_active: true // Default to active, or pull from state if editable
     };
-    
+
     console.log("Final property data payload:", propertyData);
     return propertyData;
   },
-  
+
   /**
    * Submit the property data to the API (Create or Update)
    * Handles image uploads internally before submitting data.
@@ -736,7 +749,7 @@ const usePropertyFormStore = create((set, get) => ({
               // Error is set within uploadAllImages
               console.error("Image processing failed. Aborting submission.");
               // Ensure isSubmitting is false if upload failed
-              set({ isSubmitting: false }); 
+              set({ isSubmitting: false });
               throw new Error(state.submitError || 'Failed to process images.');
           }
           console.log("Image processing successful.");
@@ -746,8 +759,8 @@ const usePropertyFormStore = create((set, get) => ({
           console.log("Final data prepared for API.");
 
           // 3. Determine API endpoint and method
-          const endpoint = state.mode === 'edit' 
-              ? `/api/listings/${state.propertyId}` 
+          const endpoint = state.mode === 'edit'
+              ? `/api/listings/${state.propertyId}`
               : '/api/listings';
           const method = state.mode === 'edit' ? 'PUT' : 'POST';
 
@@ -781,23 +794,23 @@ const usePropertyFormStore = create((set, get) => ({
           throw error; // Re-throw error for the calling component to handle
       }
   },
-  
+
   // Form navigation methods
   setCurrentStep: (step) => set({ currentStep: step }),
-  
-  nextStep: () => set((state) => ({ 
-    currentStep: Math.min(state.totalSteps - 1, state.currentStep + 1) 
+
+  nextStep: () => set((state) => ({
+    currentStep: Math.min(state.totalSteps - 1, state.currentStep + 1)
   })),
-  
-  prevStep: () => set((state) => ({ 
-    currentStep: Math.max(0, state.currentStep - 1) 
+
+  prevStep: () => set((state) => ({
+    currentStep: Math.max(0, state.currentStep - 1)
   })),
-  
+
   // Status methods
   setSubmitting: (isSubmitting) => set({ isSubmitting }),
-  
+
   setSubmitError: (error) => set({ submitError: error }),
-  
+
   /**
    * Reset the form to initial state
    * Cleans up resources (e.g., object URLs) to prevent memory leaks
@@ -805,23 +818,23 @@ const usePropertyFormStore = create((set, get) => ({
   resetForm: () => {
     console.log("Resetting form store...");
     // Get current state to access previews for cleanup
-    const state = get(); 
-    
+    const state = get();
+
     // Clean up object URLs
     const cleanUpUrl = (url) => {
       if (url && typeof url === 'string' && url.startsWith('blob:')) {
         URL.revokeObjectURL(url);
       }
     };
-    
+
     cleanUpUrl(state.imagePreviews.main_image);
     cleanUpUrl(state.imagePreviews.side_image1);
     cleanUpUrl(state.imagePreviews.side_image2);
-    
+
     if (state.imagePreviews.extra_images && state.imagePreviews.extra_images.length > 0) {
       state.imagePreviews.extra_images.forEach(url => cleanUpUrl(url));
     }
-    
+
     // Reset to initial state using setCreateMode logic essentially
     set({
       mode: 'create',
@@ -837,6 +850,7 @@ const usePropertyFormStore = create((set, get) => ({
       side_image2_url: "",
       extra_image_urls: [],
       priceRanges: [],
+      minimum_stay: 1, // Reset minimum_stay
       deleted_image_urls: [],
       location: {
         street: "",

@@ -81,6 +81,7 @@ CREATE TABLE properties (
   main_image VARCHAR(255),
   side_image1 VARCHAR(255),
   side_image2 VARCHAR(255),
+  minimum_stay INTEGER NOT NULL DEFAULT 1,
   location_id INTEGER NOT NULL,
   number_of_guests INTEGER NOT NULL DEFAULT 1,
   number_of_bedrooms INTEGER NOT NULL DEFAULT 1,
@@ -453,17 +454,17 @@ INSERT INTO locations (address, street, apt, city, state, zip, country, latitude
 -- Insert sample properties
 INSERT INTO properties (
   host_id, title, description, 
-  main_image, side_image1, side_image2, location_id, 
+  main_image, side_image1, side_image2, minimum_stay, location_id, 
   number_of_guests, number_of_bedrooms, number_of_beds, number_of_bathrooms, additional_info
 ) VALUES
 (1, 'Beautiful Apartment', 'A beautiful apartment in the city center.',
 'https://placehold.co/1024x1024/png?text=Main+Image', 'https://placehold.co/1024x1024/png?text=Side+Image+1',
-'https://placehold.co/1024x1024/png?text=Side+Image+2', 1,
+'https://placehold.co/1024x1024/png?text=Side+Image+2', 5, 1,
 4, 2, 3, 2, 'House rules: No smoking, no pets. Check-in after 3 PM, check-out before 11 AM.'),
 
 (1, 'Cozy Cottage', 'A cozy cottage in the countryside.',
 'https://placehold.co/1024x1024/png?text=Main+Image', 'https://placehold.co/1024x1024/png?text=Side+Image+1', 
-'https://placehold.co/1024x1024/png?text=Side+Image+2', 2,
+'https://placehold.co/1024x1024/png?text=Side+Image+2', 3, 2,
 6, 3, 3, 2, '');
 
 -- Insert sample property images

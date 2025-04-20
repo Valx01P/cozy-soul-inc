@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo } from "react"
 import { format, parseISO, isValid } from "date-fns"
-import { DollarSign } from "lucide-react"
+import { DollarSign, Moon } from "lucide-react"
 import usePropertyFormStore from "@/app/stores/propertyFormStore"
 
 // Reusable component for formatting descriptions with paragraphs
@@ -44,7 +44,8 @@ export function ConfirmSubmitStep() {
     number_of_bathrooms,
     additional_info,
     amenities,
-    imagePreviews
+    imagePreviews,
+    minimum_stay
   } = usePropertyFormStore((state) => state)
 
   // Sort price ranges by start date so they're always chronological
@@ -149,6 +150,15 @@ export function ConfirmSubmitStep() {
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Pricing & Availability</h3>
         <div className="bg-gray-50 rounded-xl p-6">
+          {/* Minimum Stay Information */}
+          <div className="mb-4 pb-4 border-b border-gray-200">
+            <p className="text-gray-500 text-sm mb-1">Minimum Stay</p>
+            <p className="font-semibold flex items-center">
+              <Moon size={16} className="mr-2 text-gray-600" />
+              {minimum_stay} {minimum_stay === 1 ? 'night' : 'nights'}
+            </p>
+          </div>
+          
           {sortedPriceRanges.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="min-w-full">
@@ -277,8 +287,7 @@ export function ConfirmSubmitStep() {
                         >
                           <path
                             fillRule="evenodd"
-                            d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 
-                               0 01-1.127.075l-4.5-4.5a.75.75 0 
+                            d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 
                                011.06-1.06l3.894 3.893 7.48-9.817a.75.75 
                                0 011.05-.143z"
                             clipRule="evenodd"
