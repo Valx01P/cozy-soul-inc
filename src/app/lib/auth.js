@@ -137,3 +137,36 @@ export async function getAuthTokens(request) {
   
   return { accessToken, refreshToken };
 }
+
+/**
+ * Gets the currently logged in user from the access token
+ * @returns {Object|null} User data or null if not authenticated
+ */
+export async function getLoggedInUser() {
+  try {
+    const { accessToken, refreshToken } = await getAuthTokens();
+    
+    if (!accessToken) {
+      return null;
+    }
+    
+    const payload = await verifyToken(accessToken);
+    
+    if (!payload) {
+      return null;
+    }
+    
+    return {
+      id: payload.user_id,
+      firstName: payload.first_name,
+      lastName: payload.last_name,
+      email: payload.email,
+      role: payload.role,
+      emailVerified: payload.email_verified,
+      identityVerified: payload.identity_verified
+    };
+  } catch (error) {
+    console.error('Error getting logged in user:', error);
+    return null;
+  }
+}
