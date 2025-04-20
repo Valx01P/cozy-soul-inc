@@ -1,6 +1,11 @@
 
 
-/**
- * Get all reservations for a listing if the user is an admin or the owner of the listing.
- * Get all reservations for a user if the user is a guest.
- */
+/*
+gets all your reservations for a listing
+*/
+export async function GET(request, { params }) {}
+
+/*
+lets you create a new reservation for a listing
+*/
+export async function POST(request, { params }) {}
