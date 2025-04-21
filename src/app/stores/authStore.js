@@ -13,10 +13,14 @@ const useAuthStore = create(
       user: null,
       isAuthenticated: false,
       isLoading: false,
+      // New specific loading states
+      isLoginLoading: false,
+      isSignupLoading: false,
+      isGoogleLoginLoading: false,
       error: null,
       
       login: async (loginData) => {
-        set({ isLoading: true, error: null })
+        set({ isLoginLoading: true, isLoading: true, error: null })
         
         try {
           const userData = await authService.login(loginData)
@@ -34,20 +38,22 @@ const useAuthStore = create(
               updated_at: userData.updated_at
             },
             isAuthenticated: true,
+            isLoginLoading: false,
             isLoading: false
           })
           
           return userData
         } catch (error) {
-          set({ error: error.message, isLoading: false })
+          set({ error: error.message, isLoginLoading: false, isLoading: false })
           throw error
         }
       },
       
       googleLogin: (redirectTo = '/') => {
-        set({ isLoading: true, error: null })
+        set({ isGoogleLoginLoading: true, error: null })
+        // Only set the Google-specific loading state, not the global one
+        // since we're redirecting immediately
         authService.googleLogin(redirectTo)
-        // No need for try/catch since we're redirecting
       },
       
       handleGoogleCallback: async () => {
@@ -57,7 +63,7 @@ const useAuthStore = create(
       },
 
       signup: async (signUpData) => {
-        set({ isLoading: true, error: null })
+        set({ isSignupLoading: true, isLoading: true, error: null })
         
         try {
           const user = await authService.signup(signUpData)
@@ -76,12 +82,13 @@ const useAuthStore = create(
               updated_at: user.updated_at
             },
             isAuthenticated: true,
+            isSignupLoading: false,
             isLoading: false
           })
           
           return user
         } catch (error) {
-          set({ error: error.message, isLoading: false })
+          set({ error: error.message, isSignupLoading: false, isLoading: false })
           throw error
         }
       },
@@ -96,10 +103,12 @@ const useAuthStore = create(
             user: null,
             isAuthenticated: false,
             isLoading: false,
+            isLoginLoading: false,
+            isSignupLoading: false,
+            isGoogleLoginLoading: false,
             error: null
           })
           
-
           localStorage.removeItem('auth-storage')
           
           return true
