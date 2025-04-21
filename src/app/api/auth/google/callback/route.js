@@ -139,18 +139,39 @@ async function createOrUpdateUser(googleUser) {
   }
 }
 
+// Check if a profile image is from our custom upload bucket
+function isCustomProfileImage(imageUrl) {
+  if (!imageUrl) return false
+  
+  // Check if the URL contains our profile-images bucket pattern
+  return imageUrl.includes('/profile-images/') || 
+         // Also check for our user pattern in uploaded images 
+         imageUrl.includes('user-') && 
+         // Make sure it's not a placeholder default image
+         !imageUrl.includes('placehold.co')
+}
+
 // Update existing user
 async function updateExistingUser(existingUser, googleUser) {
+  // Prepare update data
+  const updateData = {
+    google_id: googleUser.id,
+    first_name: googleUser.given_name || existingUser.first_name,
+    last_name: googleUser.family_name || existingUser.last_name,
+    email_verified: true,
+    updated_at: new Date().toISOString()
+  }
+  
+  // Only update profile image if:
+  // 1. User doesn't have a profile image yet, or
+  // 2. The existing profile image is NOT a custom uploaded image
+  if (!existingUser.profile_image || !isCustomProfileImage(existingUser.profile_image)) {
+    updateData.profile_image = googleUser.picture || existingUser.profile_image
+  }
+  
   const { data: updatedUser, error: updateError } = await supabase
     .from('users')
-    .update({
-      google_id: googleUser.id,
-      first_name: googleUser.given_name || existingUser.first_name,
-      last_name: googleUser.family_name || existingUser.last_name,
-      profile_image: googleUser.picture || existingUser.profile_image,
-      email_verified: true,
-      updated_at: new Date().toISOString()
-    })
+    .update(updateData)
     .eq('id', existingUser.id)
     .select()
     .single()

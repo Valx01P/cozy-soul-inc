@@ -27,6 +27,7 @@ const useAuthStore = create(
           
           set({
             user: {
+              id: userData.id,
               first_name: userData.first_name,
               last_name: userData.last_name,
               email: userData.email,
@@ -71,6 +72,7 @@ const useAuthStore = create(
           // Update state with user data
           set({
             user: {
+              id: user.id,
               first_name: user.first_name,
               last_name: user.last_name,
               email: user.email,
@@ -129,6 +131,7 @@ const useAuthStore = create(
           
           set({
             user: {
+              id: userData.id,
               first_name: userData.first_name,
               last_name: userData.last_name,
               email: userData.email,
@@ -223,6 +226,58 @@ const useAuthStore = create(
           throw error;
         }
       },
+
+      // New function to upload profile image
+      uploadProfileImage: async (imageFile) => {
+        try {
+          const formData = new FormData();
+          formData.append('image', imageFile);
+          
+          const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/upload/profile`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to upload profile image');
+          }
+          
+          const data = await response.json();
+          return data.url;
+        } catch (error) {
+          console.error('Error uploading profile image:', error);
+          throw error;
+        }
+      },
+      
+      // New function to delete profile image
+      deleteProfileImage: async (imageUrl) => {
+        try {
+          // Extract filename from URL
+          const filepath = imageUrl;
+          
+          const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/upload/profile`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ filepath })
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to delete profile image');
+          }
+          
+          return true;
+        } catch (error) {
+          console.error('Error deleting profile image:', error);
+          throw error;
+        }
+      }
     }),
     {
       name: 'auth-storage',

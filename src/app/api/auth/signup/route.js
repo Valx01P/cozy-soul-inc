@@ -36,6 +36,7 @@ CREATE TABLE users (
   @returns
   ACCESS_TOKEN, REFRESH_TOKEN,
   {
+    "id": "1",
     "first_name": "John",
     "last_name": "Doe",
     "email": "example@gmail.com",
@@ -105,6 +106,7 @@ export async function POST(request) {
     await setAuthCookies(accessToken, refreshToken)
 
     const response = {
+      id: newUser.id,
       first_name: newUser.first_name,
       last_name: newUser.last_name,
       email: newUser.email,

@@ -10,6 +10,7 @@ const authService = {
     @returns
     ACCESS_TOKEN, REFRESH_TOKEN,
     {
+      "id": "1",
       "first_name": "John",
       "last_name": "Doe",
       "email": "example@gmail.com",
@@ -121,6 +122,7 @@ const authService = {
     @returns
     ACCESS_TOKEN, REFRESH_TOKEN,
     {
+      "id": "1",
       "first_name": "John",
       "last_name": "Doe",
       "email": "example@gmail.com",
@@ -170,6 +172,7 @@ const authService = {
 
     @returns
     {
+      "id": "1",
       "first_name": "John",
       "last_name": "Doe",
       "email": "example@gmail.com",

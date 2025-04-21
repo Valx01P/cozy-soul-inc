@@ -5,6 +5,7 @@ const userService = {
 
     @returns
     {
+      "id": "1",
       "first_name": "John",
       "last_name": "Doe",
       "email": "john.doe@example.com",
@@ -146,6 +147,7 @@ const userService = {
 
     @returns
     {
+      "id": "1",
       "first_name": "John",
       "last_name": "Doe",
       "email": "example@gmail.com",

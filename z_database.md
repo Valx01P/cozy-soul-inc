@@ -272,6 +272,7 @@ DROP FUNCTION IF EXISTS update_timestamp() CASCADE;
 ```js
 // Our supabase storage bucket name
 property-images
+profile-images
 ```
 
 

@@ -90,6 +90,7 @@ export async function GET(request) {
     }
 
     const response = {
+      id: user.id,
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,
@@ -124,6 +125,7 @@ export async function GET(request) {
 
   @returns
   {
+    "id": "1",
     "first_name": "John",
     "last_name": "Doe",
     "email": "example@gmail.com",
@@ -206,6 +208,7 @@ export async function PUT(request) {
     
     // return the user information with the updated fields
     const response = {
+      id: updatedUser.id,
       first_name: updatedUser.first_name,
       last_name: updatedUser.last_name,
       email: updatedUser.email,

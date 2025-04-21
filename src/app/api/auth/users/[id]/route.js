@@ -54,33 +54,29 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
     }
 
-    const { accessToken } = await getAuthTokens(request)
+    // const { accessToken } = await getAuthTokens(request)
 
-    if (!accessToken) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // if (!accessToken) {
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // }
 
-    const payload = await verifyToken(accessToken)
+    // const payload = await verifyToken(accessToken)
 
-    /**
-     * @example Payload:
-     * {
-     *   "user_id": "123",
-     *   "first_name": "John",
-     *   "last_name": "Doe",
-     *   "email": "user@example.com",
-     *   "role": "guest",
-     *   "email_verified": false,
-     *   "identity_verified": false
-     * }
-     */
+    // /**
+    //  * @example Payload:
+    //  * {
+    //  *   "user_id": "123",
+    //  *   "first_name": "John",
+    //  *   "last_name": "Doe",
+    //  *   "email": "user@example.com",
+    //  *   "role": "guest",
+    //  *   "email_verified": false,
+    //  *   "identity_verified": false
+    //  * }
+    //  */
     
-    if (!payload || !payload.user_id) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
-
-    // if (payload.role !== 'admin') {
-    //   return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    // if (!payload || !payload.user_id) {
+    //   return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     // }
 
     const { data: user, error: userError } = await supabase
