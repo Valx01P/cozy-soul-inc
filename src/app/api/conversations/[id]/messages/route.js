@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { getLoggedInUser } from '@/app/lib/auth';
 import supabase from '@/app/services/supabase';
 
-// Using imported supabase client
-
 // GET messages for a specific conversation with pagination
 export async function GET(request, { params }) {
   try {
@@ -13,9 +11,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: conversationId } = params;
-    
-    // Using imported supabase client
+    const { id: conversationId } = await params;
     
     // Check if user is part of this conversation
     const { data: userConv, error: userConvError } = await supabase
@@ -152,9 +148,6 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
     
-    // Create Supabase client
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
     // Check if user is part of this conversation
     const { data: userConv, error: userConvError } = await supabase
       .from('user_conversations')
@@ -167,13 +160,17 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Conversation not found or access denied' }, { status: 404 });
     }
     
-    // Add message
+    // Use client's local time and convert to ISO format for consistent timestamps
+    const now = new Date().toISOString();
+    
+    // Add message with explicit timestamp
     const { data: newMessage, error: messageError } = await supabase
       .from('messages')
       .insert({
         conversation_id: conversationId,
         sender_id: user.id,
-        content: message
+        content: message,
+        created_at: now
       })
       .select('*, sender:sender_id(id, first_name, last_name, profile_image)')
       .single();
@@ -191,19 +188,15 @@ export async function POST(request, { params }) {
       
     if (!participantsError && otherParticipants.length) {
       // Increment unread count for all other participants
-      const updates = otherParticipants.map(p => ({
-        user_id: p.user_id,
-        conversation_id: conversationId,
-        unread_count: supabase.rpc('increment', { x: 1 })
-      }));
-      
-      await Promise.all(updates.map(update => 
-        supabase
+      for (const participant of otherParticipants) {
+        await supabase
           .from('user_conversations')
-          .update({ unread_count: supabase.rpc('increment', { x: 1 }) })
-          .eq('user_id', update.user_id)
-          .eq('conversation_id', update.conversation_id)
-      ));
+          .update({ 
+            unread_count: supabase.sql`unread_count + 1` 
+          })
+          .eq('user_id', participant.user_id)
+          .eq('conversation_id', conversationId);
+      }
     }
     
     return NextResponse.json({ message: newMessage }, { status: 201 });
@@ -228,9 +221,6 @@ export async function PATCH(request, { params }) {
     if (!action || typeof action !== 'string') {
       return NextResponse.json({ error: 'Action is required' }, { status: 400 });
     }
-    
-    // Create Supabase client
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Check if user is part of this conversation
     const { data: userConv, error: userConvError } = await supabase
