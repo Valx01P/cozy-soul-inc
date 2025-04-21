@@ -30,16 +30,27 @@ export default function AdminListings() {
         
         const data = await response.json();
         
-        // Ensure properties exists and handle image URLs
-        const propertiesWithValidImages = (data.properties || []).map(property => ({
-          ...property,
-          main_image: property.main_image || PLACEHOLDER_IMAGE,
-          side_image1: property.side_image1 || null,
-          side_image2: property.side_image2 || null,
-          extra_images: Array.isArray(property.extra_images) ? property.extra_images.filter(url => !!url) : []
-        }));
+        // Process and format the properties with the updated data structure
+        const formattedProperties = data.map(property => {
+          // Get the current/default price from availability
+          const currentAvailability = getCurrentAvailability(property.availability);
+          const price = currentAvailability?.price || 0;
+          
+          return {
+            ...property,
+            main_image: property.main_image || PLACEHOLDER_IMAGE,
+            side_image1: property.side_image1 || null,
+            side_image2: property.side_image2 || null,
+            extra_images: Array.isArray(property.extra_images) ? property.extra_images.filter(url => !!url) : [],
+            // Add calculated price field for sorting/display
+            price: price,
+            price_description: 'night',
+            // Ensure other required fields exist
+            currency: 'USD'
+          };
+        });
         
-        setProperties(propertiesWithValidImages);
+        setProperties(formattedProperties);
       } catch (error) {
         console.error("Error fetching properties:", error);
         showToast('Failed to load listings. Please try again later.', 'error');
@@ -51,6 +62,44 @@ export default function AdminListings() {
     
     fetchProperties();
   }, []);
+  
+  // Helper function to get current/default availability and price
+  const getCurrentAvailability = (availabilityArray) => {
+    if (!availabilityArray || !Array.isArray(availabilityArray) || availabilityArray.length === 0) {
+      return null;
+    }
+    
+    // Get current date
+    const today = new Date();
+    
+    // First, try to find an available date range that includes today
+    let currentAvailability = availabilityArray.find(avail => {
+      const startDate = new Date(avail.start_date);
+      const endDate = new Date(avail.end_date);
+      return avail.is_available && startDate <= today && endDate >= today;
+    });
+    
+    // If not found, get the next available date range
+    if (!currentAvailability) {
+      const futureAvailabilities = availabilityArray
+        .filter(avail => avail.is_available && new Date(avail.start_date) > today)
+        .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+      
+      currentAvailability = futureAvailabilities[0];
+    }
+    
+    // If still not found, just get the first available date range
+    if (!currentAvailability) {
+      currentAvailability = availabilityArray.find(avail => avail.is_available);
+    }
+    
+    // If no available dates, get any date range
+    if (!currentAvailability && availabilityArray.length > 0) {
+      currentAvailability = availabilityArray[0];
+    }
+    
+    return currentAvailability;
+  };
   
   const handleSort = (field) => {
     if (sortField === field) {
@@ -69,15 +118,19 @@ export default function AdminListings() {
   };
   
   const confirmDelete = async () => {
+    if (!propertyToDelete) return;
+    
     try {
       setIsLoading(true);
       
       const response = await fetch(`/api/listings/${propertyToDelete.id}`, {
         method: 'DELETE',
+        credentials: 'include' // Include credentials for authenticated requests
       });
       
       if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Error: ${response.status}`);
       }
       
       // Update the UI by removing the deleted property
@@ -87,7 +140,7 @@ export default function AdminListings() {
       showToast('Property deleted successfully!', 'success');
     } catch (error) {
       console.error("Error deleting property:", error);
-      showToast('Failed to delete property. Please try again.', 'error');
+      showToast(`Failed to delete property: ${error.message}`, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -111,19 +164,33 @@ export default function AdminListings() {
   
   // Sort properties
   const sortedProperties = [...filteredProperties].sort((a, b) => {
-    let aValue = a[sortField];
-    let bValue = b[sortField];
+    let aValue, bValue;
     
-    // Handle nested fields like location.city
-    if (sortField === 'location') {
-      aValue = a.location?.city || '';
-      bValue = b.location?.city || '';
-    }
-    
-    // Handle price comparison
-    if (sortField === 'price') {
-      aValue = parseFloat(a.price);
-      bValue = parseFloat(b.price);
+    // Handle different sort fields
+    switch(sortField) {
+      case 'id':
+        aValue = parseInt(a.id);
+        bValue = parseInt(b.id);
+        break;
+      case 'title':
+        aValue = a.title || '';
+        bValue = b.title || '';
+        break;
+      case 'location':
+        aValue = a.location?.city || '';
+        bValue = b.location?.city || '';
+        break;
+      case 'price':
+        aValue = parseFloat(a.price) || 0;
+        bValue = parseFloat(b.price) || 0;
+        break;
+      case 'number_of_bedrooms':
+        aValue = parseInt(a.number_of_bedrooms) || 0;
+        bValue = parseInt(b.number_of_bedrooms) || 0;
+        break;
+      default:
+        aValue = a[sortField];
+        bValue = b[sortField];
     }
     
     if (aValue < bValue) {
@@ -137,11 +204,13 @@ export default function AdminListings() {
 
   // Format currency
   const formatPrice = (price, currency = 'USD') => {
+    if (!price && price !== 0) return 'Price unavailable';
+    
     const currencySymbol = currency === "USD" ? "$" : 
                            currency === "EUR" ? "€" : 
                            currency === "GBP" ? "£" : "$";
     
-    return `${currencySymbol}${price}`;
+    return `${currencySymbol}${price.toFixed(2)}`;
   };
 
   return (

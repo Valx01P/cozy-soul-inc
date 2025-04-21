@@ -18,9 +18,13 @@ export function BasicInfoFormStep() {
     side_image2_url,
     extra_image_urls,
     imagePreviews,
+    mode,
     updateBasicInfo,
     updateImagePreview
-  } = usePropertyFormStore((state) => state)
+  } = usePropertyFormStore(state => state)
+
+  // Create a local state to keep track of extra images with unique IDs
+  const [extraImageItems, setExtraImageItems] = useState([]);
 
   // State for camera
   const [isCameraOpen, setIsCameraOpen] = useState(false)
@@ -36,21 +40,48 @@ export function BasicInfoFormStep() {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
 
-  // Set preview from URLs on initial load (for edit mode)
+  // Initialize extra image items from imagePreviews on component mount
   useEffect(() => {
-    if (main_image_url && !imagePreviews.main_image) {
-      updateImagePreview('main_image', main_image_url);
+    if (imagePreviews.extra_images && imagePreviews.extra_images.length > 0) {
+      // Create new items regardless of current items to ensure consistency
+      const newItems = imagePreviews.extra_images.map((url, index) => ({
+        id: `image-${index}`, // Simpler ID format that won't cause issues
+        url: url || '',  // Ensure URL is never undefined
+        index
+      }));
+      setExtraImageItems(newItems);
+    } else {
+      // Reset if no images
+      setExtraImageItems([]);
     }
-    if (side_image1_url && !imagePreviews.side_image1) {
-      updateImagePreview('side_image1', side_image1_url);
-    }
-    if (side_image2_url && !imagePreviews.side_image2) {
-      updateImagePreview('side_image2', side_image2_url);
-    }
-    if (extra_image_urls?.length > 0 && (!imagePreviews.extra_images || imagePreviews.extra_images.length === 0)) {
-      updateImagePreview('extra_images', extra_image_urls);
+  }, [imagePreviews.extra_images]);
+
+  // Set preview from URLs on component mount (especially important for edit mode)
+  useEffect(() => {
+    console.log("BasicInfoFormStep mounted, mode:", mode);
+    
+    // Initialize image previews from existing URLs in edit mode
+    if (mode === 'edit') {
+      if (main_image_url && !imagePreviews.main_image) {
+        updateImagePreview('main_image', main_image_url);
+      }
+      
+      if (side_image1_url && !imagePreviews.side_image1) {
+        updateImagePreview('side_image1', side_image1_url);
+      }
+      
+      if (side_image2_url && !imagePreviews.side_image2) {
+        updateImagePreview('side_image2', side_image2_url);
+      }
+      
+      if (extra_image_urls?.length > 0 && 
+          (!imagePreviews.extra_images || imagePreviews.extra_images.length === 0)) {
+        // Use a clean array to ensure consistent data
+        updateImagePreview('extra_images', [...(extra_image_urls || [])]);
+      }
     }
   }, [
+    mode,
     main_image_url, 
     side_image1_url, 
     side_image2_url, 
@@ -86,77 +117,141 @@ export function BasicInfoFormStep() {
     try {
       if (imageType === 'extra_images') {
         // Handle multiple files for extra images
-        const newExtraImages = [...extra_images]
-        const newExtraPreviews = [...imagePreviews.extra_images]
-
+        const newExtraImages = [...(extra_images || [])];
+        const newExtraPreviews = [...(imagePreviews.extra_images || [])];
+        
         Array.from(files).forEach(file => {
           if (!file.type.startsWith('image/')) return
 
           // Create object URL for preview
-          const previewUrl = URL.createObjectURL(file)
-          newExtraImages.push(file)
-          newExtraPreviews.push(previewUrl)
-        })
+          const previewUrl = URL.createObjectURL(file);
+          
+          // Add to file array for upload
+          newExtraImages.push(file);
+          
+          // Add to preview arrays
+          newExtraPreviews.push(previewUrl);
+        });
 
-        updateBasicInfo({ extra_images: newExtraImages })
-        updateImagePreview('extra_images', newExtraPreviews)
+        // Update the store first so imagePreviews gets updated
+        updateBasicInfo({ extra_images: newExtraImages });
+        updateImagePreview('extra_images', newExtraPreviews);
+        
+        // extraImageItems will be updated via the useEffect that watches imagePreviews.extra_images
       } else {
         // Handle single file upload
-        const file = files[0]
-        if (!file.type.startsWith('image/')) return
+        const file = files[0];
+        if (!file.type.startsWith('image/')) return;
 
         // Create object URL for preview
-        const previewUrl = URL.createObjectURL(file)
+        const previewUrl = URL.createObjectURL(file);
 
-        updateBasicInfo({ [imageType]: file })
-        updateImagePreview(imageType, previewUrl)
+        // If there was a previous URL and it's a blob, revoke it
+        if (imagePreviews[imageType] && imagePreviews[imageType].startsWith('blob:')) {
+          URL.revokeObjectURL(imagePreviews[imageType]);
+        }
+
+        // If replacing an existing server image in edit mode, track it for deletion
+        const urlField = `${imageType}_url`;
+        const currentUrl = usePropertyFormStore.getState()[urlField];
+        
+        if (currentUrl) {
+          const deletedUrls = [...usePropertyFormStore.getState().deleted_image_urls];
+          if (!deletedUrls.includes(currentUrl)) {
+            deletedUrls.push(currentUrl);
+          }
+          
+          updateBasicInfo({ 
+            [imageType]: file,
+            [urlField]: "", // Clear the URL since we're uploading a new file
+            deleted_image_urls: deletedUrls
+          });
+        } else {
+          updateBasicInfo({ [imageType]: file });
+        }
+        
+        updateImagePreview(imageType, previewUrl);
       }
     } catch (error) {
-      console.error("Error handling image upload:", error)
+      console.error("Error handling image upload:", error);
     } finally {
-      setIsUploading(false)
+      setIsUploading(false);
     }
   }
 
   // Handle removing an image
   const handleRemoveImage = (imageType, index = null) => {
     if (imageType === 'extra_images' && index !== null) {
-      // Remove specific extra image
-      const newExtraImages = [...extra_images]
-      const newExtraPreviews = [...imagePreviews.extra_images]
-      const newExtraUrls = [...extra_image_urls]
-
-      // Release object URL to avoid memory leaks
-      if (newExtraPreviews[index] && !newExtraPreviews[index].startsWith('http')) {
-        URL.revokeObjectURL(newExtraPreviews[index])
-      }
-
-      newExtraImages.splice(index, 1)
-      newExtraPreviews.splice(index, 1)
+      // Get current state arrays
+      const newExtraImages = [...(extra_images || [])];
+      const newExtraPreviews = [...(imagePreviews.extra_images || [])];
+      const newExtraUrls = [...(extra_image_urls || [])];
+      const deletedUrls = [...usePropertyFormStore.getState().deleted_image_urls];
       
-      // Also remove from URLs if it exists there
-      if (index < newExtraUrls.length) {
-        newExtraUrls.splice(index, 1)
+      // Release object URL if it's a blob
+      if (newExtraPreviews[index] && typeof newExtraPreviews[index] === 'string' && newExtraPreviews[index].startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(newExtraPreviews[index]);
+        } catch (e) {
+          // Silent catch - just to prevent any potential errors
+        }
       }
-
+      
+      // Add server URL to delete list if needed
+      if (index < newExtraUrls.length && 
+          newExtraUrls[index] && 
+          !newExtraUrls[index].startsWith('blob:') && 
+          !deletedUrls.includes(newExtraUrls[index])) {
+        deletedUrls.push(newExtraUrls[index]);
+      }
+      
+      // Remove from arrays
+      newExtraImages.splice(index, 1);
+      newExtraPreviews.splice(index, 1);
+      
+      if (index < newExtraUrls.length) {
+        newExtraUrls.splice(index, 1);
+      }
+      
+      // Update state
       updateBasicInfo({ 
         extra_images: newExtraImages,
-        extra_image_urls: newExtraUrls
-      })
-      updateImagePreview('extra_images', newExtraPreviews)
+        extra_image_urls: newExtraUrls,
+        deleted_image_urls: deletedUrls
+      });
+      
+      // Update preview state - this will trigger the useEffect that updates extraImageItems
+      updateImagePreview('extra_images', newExtraPreviews);
     } else {
       // Remove main or side image
+      const urlField = `${imageType}_url`;
+      const currentUrl = usePropertyFormStore.getState()[urlField];
+      const deletedUrls = [...usePropertyFormStore.getState().deleted_image_urls];
+      
       // Release object URL to avoid memory leaks
-      if (imagePreviews[imageType] && !imagePreviews[imageType].startsWith('http')) {
-        URL.revokeObjectURL(imagePreviews[imageType])
+      if (imagePreviews[imageType] && typeof imagePreviews[imageType] === 'string' && imagePreviews[imageType].startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(imagePreviews[imageType]);
+        } catch (e) {
+          // Silent catch
+        }
       }
-
-      // Clear both the file and the URL
+      
+      // If removing a server URL, add to deleted list
+      if (currentUrl && !currentUrl.startsWith('blob:')) {
+        if (!deletedUrls.includes(currentUrl)) {
+          deletedUrls.push(currentUrl);
+        }
+      }
+      
+      // Update state
       updateBasicInfo({ 
         [imageType]: null,
-        [`${imageType}_url`]: null
-      })
-      updateImagePreview(imageType, null)
+        [urlField]: "",
+        deleted_image_urls: deletedUrls
+      });
+      
+      updateImagePreview(imageType, null);
     }
   }
 
@@ -240,24 +335,46 @@ export function BasicInfoFormStep() {
       
       if (activeCamera === 'extra_images') {
         // Add to extra images
-        updateBasicInfo({ 
-          extra_images: [...extra_images, file] 
-        })
+        const newExtraImages = [...(extra_images || []), file];
+        const newExtraPreviews = [...(imagePreviews.extra_images || []), previewUrl];
         
-        updateImagePreview('extra_images', [
-          ...imagePreviews.extra_images, 
-          previewUrl
-        ])
+        updateBasicInfo({ 
+          extra_images: newExtraImages
+        });
+        
+        updateImagePreview('extra_images', newExtraPreviews);
+        // extraImageItems will be updated via the useEffect
       } else {
         // Set as main or side image
-        updateBasicInfo({ [activeCamera]: file })
-        updateImagePreview(activeCamera, previewUrl)
+        const urlField = `${activeCamera}_url`;
+        const currentUrl = usePropertyFormStore.getState()[urlField];
+        const deletedUrls = [...usePropertyFormStore.getState().deleted_image_urls];
+        
+        // If replacing an existing server image, track it for deletion
+        if (currentUrl && !currentUrl.startsWith('blob:')) {
+          if (!deletedUrls.includes(currentUrl)) {
+            deletedUrls.push(currentUrl);
+          }
+          
+          updateBasicInfo({ 
+            [activeCamera]: file,
+            [urlField]: "",
+            deleted_image_urls: deletedUrls
+          });
+        } else {
+          updateBasicInfo({ [activeCamera]: file });
+        }
+        
+        updateImagePreview(activeCamera, previewUrl);
       }
       
       // Close camera
       closeCamera()
     }, 'image/jpeg', 0.9)
   }
+
+  // Create a simple fallback image data URL for when images fail to load
+  const fallbackImageSrc = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f0f0f0'/%3E%3Cpath d='M30,40 L70,40 L70,70 L30,70 Z' stroke='%23cccccc' fill='none'/%3E%3Ccircle cx='45' cy='45' r='5' fill='%23cccccc'/%3E%3C/svg%3E";
 
   return (
     <div className="space-y-8">
@@ -328,6 +445,10 @@ export function BasicInfoFormStep() {
                     src={imagePreviews.main_image}
                     alt="Main property"
                     className="w-full h-full object-cover rounded-lg"
+                    onError={(e) => {
+                      e.target.onerror = null; // Prevent infinite loop
+                      e.target.src = fallbackImageSrc;
+                    }}
                   />
                   <button
                     type="button"
@@ -393,6 +514,10 @@ export function BasicInfoFormStep() {
                       src={imagePreviews.side_image1}
                       alt="Side view 1"
                       className="w-full h-full object-cover rounded-lg"
+                      onError={(e) => {
+                        e.target.onerror = null; // Prevent infinite loop
+                        e.target.src = fallbackImageSrc;
+                      }}
                     />
                     <button
                       type="button"
@@ -454,6 +579,10 @@ export function BasicInfoFormStep() {
                       src={imagePreviews.side_image2}
                       alt="Side view 2"
                       className="w-full h-full object-cover rounded-lg"
+                      onError={(e) => {
+                        e.target.onerror = null; // Prevent infinite loop
+                        e.target.src = fallbackImageSrc;
+                      }}
                     />
                     <button
                       type="button"
@@ -536,17 +665,21 @@ export function BasicInfoFormStep() {
           
           {/* Extra images preview */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-2">
-            {imagePreviews.extra_images && imagePreviews.extra_images.length > 0 ? (
-              imagePreviews.extra_images.map((preview, index) => (
-                <div key={`extra-${index}`} className="relative h-32">
+            {extraImageItems.length > 0 ? (
+              extraImageItems.map((item) => (
+                <div key={item.id} className="relative h-32">
                   <img
-                    src={preview}
-                    alt={`Additional view ${index + 1}`}
+                    src={item.url || fallbackImageSrc}
+                    alt={`Additional view ${item.index + 1}`}
                     className="w-full h-full object-cover rounded-lg border border-gray-200"
+                    onError={(e) => {
+                      e.target.onerror = null; // Prevent infinite loop
+                      e.target.src = fallbackImageSrc;
+                    }}
                   />
                   <button
                     type="button"
-                    onClick={() => handleRemoveImage('extra_images', index)}
+                    onClick={() => handleRemoveImage('extra_images', item.index)}
                     className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">

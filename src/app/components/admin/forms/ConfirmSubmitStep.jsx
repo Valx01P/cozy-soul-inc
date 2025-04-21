@@ -1,4 +1,3 @@
-// my-app/src/app/components/admin/forms/ConfirmSubmitStep.jsx
 'use client'
 
 import { useEffect, useMemo } from "react"
@@ -58,10 +57,8 @@ export function ConfirmSubmitStep() {
     })
   }, [priceRanges])
 
-  useEffect(() => {
-    console.log("Confirm step - amenities:", amenities)
-    console.log("Confirm step - sorted price ranges:", sortedPriceRanges)
-  }, [amenities, sortedPriceRanges])
+  // Fallback image for failed image loads
+  const fallbackImageSrc = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f0f0f0'/%3E%3Cpath d='M30,40 L70,40 L70,70 L30,70 Z' stroke='%23cccccc' fill='none'/%3E%3Ccircle cx='45' cy='45' r='5' fill='%23cccccc'/%3E%3C/svg%3E";
 
   return (
     <div className="space-y-10">
@@ -93,6 +90,10 @@ export function ConfirmSubmitStep() {
                     src={imagePreviews.main_image}
                     alt="Main property"
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.onerror = null; // Prevent infinite loop
+                      e.target.src = fallbackImageSrc;
+                    }}
                   />
                   <div className="absolute top-2 left-2 bg-white/80 text-xs px-2 py-1 rounded font-medium">
                     Main Image
@@ -107,6 +108,10 @@ export function ConfirmSubmitStep() {
                     src={imagePreviews.side_image1}
                     alt="Side view 1"
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.onerror = null; // Prevent infinite loop
+                      e.target.src = fallbackImageSrc;
+                    }}
                   />
                   <div className="absolute top-2 left-2 bg-white/80 text-xs px-2 py-1 rounded font-medium">
                     Side Image 1
@@ -119,6 +124,10 @@ export function ConfirmSubmitStep() {
                     src={imagePreviews.side_image2}
                     alt="Side view 2"
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.onerror = null; // Prevent infinite loop
+                      e.target.src = fallbackImageSrc;
+                    }}
                   />
                   <div className="absolute top-2 left-2 bg-white/80 text-xs px-2 py-1 rounded font-medium">
                     Side Image 2
@@ -132,11 +141,15 @@ export function ConfirmSubmitStep() {
               <h4 className="text-sm font-medium text-gray-700 mb-2">Additional Images</h4>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {imagePreviews.extra_images.map((src, idx) => (
-                  <div key={idx} className="aspect-square overflow-hidden rounded-lg">
+                  <div key={`extra-image-${idx}`} className="aspect-square overflow-hidden rounded-lg">
                     <img
-                      src={src}
+                      src={src || fallbackImageSrc}
                       alt={`Additional view ${idx + 1}`}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null; // Prevent infinite loop
+                        e.target.src = fallbackImageSrc;
+                      }}
                     />
                   </div>
                 ))}

@@ -1,7 +1,7 @@
 // src/app/components/admin/AdminProfileModal.jsx
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { X, Camera, Upload, Link as LinkIcon } from 'lucide-react';
+import { X, Camera, Upload, Link as LinkIcon, Loader } from 'lucide-react';
 import useAuthStore from '../../stores/authStore';
 import Image from 'next/image';
 
@@ -12,9 +12,6 @@ export default function AdminProfileModal({ isOpen, onClose }) {
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
-    username: '',
-    email: '',
-    password: '',
   });
   
   // Image upload state
@@ -22,6 +19,7 @@ export default function AdminProfileModal({ isOpen, onClose }) {
   const [profileImagePreview, setProfileImagePreview] = useState('');
   const [imageUploadType, setImageUploadType] = useState('file'); // 'file', 'url', or 'camera'
   const [imageUrl, setImageUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   
   // Camera state
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -34,6 +32,7 @@ export default function AdminProfileModal({ isOpen, onClose }) {
   
   // Success/error messages
   const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
   
   // Initialize form data when user data changes
   useEffect(() => {
@@ -41,9 +40,6 @@ export default function AdminProfileModal({ isOpen, onClose }) {
       setFormData({
         first_name: user.first_name || '',
         last_name: user.last_name || '',
-        username: user.username || '',
-        email: user.email || '',
-        password: '', // Don't populate password
       });
       
       if (user.profile_image) {
@@ -81,30 +77,36 @@ export default function AdminProfileModal({ isOpen, onClose }) {
     if (!file) return;
     
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+      setErrorMessage('Please select an image file');
       return;
     }
     
     setProfileImage(file);
     setProfileImagePreview(URL.createObjectURL(file));
     setImageUploadType('file');
+    setErrorMessage('');
   };
   
   // Handle URL input
   const handleUrlSubmit = (e) => {
     e.preventDefault();
     
-    if (!imageUrl.trim()) return;
+    if (!imageUrl.trim()) {
+      setErrorMessage('Please enter a valid URL');
+      return;
+    }
     
     setProfileImagePreview(imageUrl);
     setProfileImage(null); // No file, using URL directly
     setImageUploadType('url');
+    setErrorMessage('');
   };
   
   // Open camera
   const openCamera = () => {
     setIsCameraOpen(true);
     setImageUploadType('camera');
+    setErrorMessage('');
     
     navigator.mediaDevices.getUserMedia({ 
       video: { facingMode: "user" },
@@ -121,7 +123,7 @@ export default function AdminProfileModal({ isOpen, onClose }) {
     .catch(err => {
       console.error("Error accessing camera:", err);
       setIsCameraOpen(false);
-      alert('Could not access camera. Please make sure you have given permission.');
+      setErrorMessage('Could not access camera. Please make sure you have given permission.');
     });
   };
   
@@ -169,33 +171,93 @@ export default function AdminProfileModal({ isOpen, onClose }) {
   
   // Remove profile image
   const removeProfileImage = () => {
-    if (profileImagePreview && !profileImagePreview.startsWith('http')) {
-      URL.revokeObjectURL(profileImagePreview);
+    if (profileImagePreview && profileImagePreview !== user?.profile_image) {
+      // Only revoke if it's a local object URL (not a remote URL)
+      if (profileImagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(profileImagePreview);
+      }
     }
     
     setProfileImage(null);
-    setProfileImagePreview('');
+    setProfileImagePreview(user?.profile_image || '');
     setImageUrl('');
+    setErrorMessage('');
+  };
+  
+  // Upload image file to server
+  const uploadImage = async (file) => {
+    if (!file) return null;
+    
+    setIsUploading(true);
+    
+    try {
+      // Create form data for file upload
+      const formData = new FormData();
+      formData.append('images', file);
+      
+      // Upload the file
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/upload`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to upload image');
+      }
+      
+      // Get the uploaded image URL
+      const urls = await response.json();
+      
+      if (!urls || !urls.length) {
+        throw new Error('No image URL returned from server');
+      }
+      
+      // Return the first URL (we only uploaded one image)
+      return urls[0];
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      setErrorMessage(`Failed to upload image: ${error.message}`);
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
   };
   
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
     
     // Validate form
-    if (!formData.first_name || !formData.last_name || !formData.username || !formData.email) {
-      alert('Please fill in all required fields');
+    if (!formData.first_name || !formData.last_name) {
+      setErrorMessage('Please fill in your first and last name');
       return;
     }
     
-    // Remove empty fields (particularly password if not changed)
-    const submitData = Object.fromEntries(
-      Object.entries(formData).filter(([_, value]) => value !== '')
-    );
+    // Prepare update data
+    const updateData = {
+      first_name: formData.first_name,
+      last_name: formData.last_name,
+    };
     
     try {
-      // Update profile
-      await updateProfile(submitData, profileImage);
+      // Handle image update
+      if (profileImage) {
+        // If we have a file, upload it first
+        const imageUrl = await uploadImage(profileImage);
+        if (imageUrl) {
+          updateData.profile_image = imageUrl;
+        }
+      } else if (imageUploadType === 'url' && profileImagePreview && profileImagePreview !== user?.profile_image) {
+        // If we have a URL and it's different from the current one
+        updateData.profile_image = profileImagePreview;
+      }
+      
+      // Update profile with the prepared data
+      await updateProfile(updateData);
       
       // Show success message
       setSuccessMessage('Profile updated successfully!');
@@ -207,6 +269,7 @@ export default function AdminProfileModal({ isOpen, onClose }) {
       
     } catch (err) {
       console.error('Error updating profile:', err);
+      setErrorMessage(err.message || 'Failed to update profile');
     }
   };
 
@@ -252,7 +315,13 @@ export default function AdminProfileModal({ isOpen, onClose }) {
                 </>
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-500">
-                  {user?.first_name?.charAt(0) || user?.username?.charAt(0) || 'A'}
+                  {user?.first_name?.charAt(0) || 'A'}
+                </div>
+              )}
+              
+              {isUploading && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                  <Loader className="w-6 h-6 text-white animate-spin" />
                 </div>
               )}
             </div>
@@ -262,7 +331,8 @@ export default function AdminProfileModal({ isOpen, onClose }) {
               <button
                 type="button"
                 onClick={handleBrowseFiles}
-                className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+                disabled={isUploading}
+                className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Upload size={14} className="mr-1" />
                 Upload
@@ -278,7 +348,8 @@ export default function AdminProfileModal({ isOpen, onClose }) {
               <button
                 type="button"
                 onClick={openCamera}
-                className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+                disabled={isUploading}
+                className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Camera size={14} className="mr-1" />
                 Camera
@@ -287,7 +358,8 @@ export default function AdminProfileModal({ isOpen, onClose }) {
               <button
                 type="button"
                 onClick={() => setImageUploadType('url')}
-                className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+                disabled={isUploading}
+                className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <LinkIcon size={14} className="mr-1" />
                 URL
@@ -389,50 +461,17 @@ export default function AdminProfileModal({ isOpen, onClose }) {
               />
             </div>
             
-            {/* Username */}
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                Username
-              </label>
-              <input
-                type="text"
-                id="username"
-                name="username"
-                value={formData.username}
-                onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[var(--primary-red)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-red)]"
-                required
-              />
-            </div>
-            
-            {/* Email */}
+            {/* Read-only Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
+                Email (cannot be changed)
               </label>
               <input
                 type="email"
                 id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[var(--primary-red)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-red)]"
-                required
-              />
-            </div>
-            
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password (leave blank to keep current)
-              </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-[var(--primary-red)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-red)]"
+                value={user?.email || ''}
+                className="mt-1 block w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-500 cursor-not-allowed"
+                disabled
               />
             </div>
           </div>
@@ -444,9 +483,9 @@ export default function AdminProfileModal({ isOpen, onClose }) {
             </div>
           )}
           
-          {error && (
+          {(errorMessage || error) && (
             <div className="mt-4 p-2 bg-red-100 text-red-700 rounded-md text-sm">
-              {error}
+              {errorMessage || error}
             </div>
           )}
           
@@ -461,10 +500,10 @@ export default function AdminProfileModal({ isOpen, onClose }) {
             </button>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || isUploading}
               className="px-4 py-2 bg-[var(--primary-red)] text-white rounded-md text-sm font-medium hover:bg-[var(--primary-red-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-red)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Saving...' : 'Save Changes'}
+              {isLoading || isUploading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>

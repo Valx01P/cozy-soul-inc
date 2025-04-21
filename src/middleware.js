@@ -13,12 +13,10 @@ async function verifyTokenInMiddleware(token) {
 }
 
 export async function middleware(request) {
-
   const accessToken = request.cookies.get('access_token')?.value
   
   const loginUrl = new URL('/admin', request.url)
   
-
   if (!accessToken) {
     return NextResponse.redirect(loginUrl)
   }
@@ -30,8 +28,14 @@ export async function middleware(request) {
       console.log('Invalid or expired token, redirecting to login')
       return NextResponse.redirect(loginUrl)
     }
-        
-    // If token is valid, allow the request
+    
+    // Check if user has admin role
+    if (payload.role !== 'admin') {
+      console.log('User does not have admin role, redirecting to home')
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+    
+    // If token is valid and user is admin, allow the request
     return NextResponse.next()
   } catch (error) {
     console.error('Error verifying token:', error)

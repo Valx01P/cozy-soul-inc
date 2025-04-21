@@ -1,4 +1,4 @@
-// src/app/stores/propertyFormStore.js
+// src/app/stores/propertyFormStore.js - Fixed Edit Mode Image Handling
 import { create } from 'zustand'
 import { toast } from 'react-hot-toast'
 import { format, parseISO, isValid } from 'date-fns'
@@ -90,6 +90,8 @@ const usePropertyFormStore = create((set, get) => ({
       side_image2: propertyData.side_image2 || null,
       extra_images: Array.isArray(propertyData.extra_images) ? [...propertyData.extra_images] : []
     };
+
+    console.log("Setting image previews:", imagePreviewsData);
 
     // Transform amenities format if needed
     // From API: { category: [ {name, svg}, ... ] }
@@ -232,7 +234,7 @@ const usePropertyFormStore = create((set, get) => ({
    * Update basic info form data
    */
   updateBasicInfo: (data) => set((state) => {
-    // Track URLs of removed images to delete them from storage later
+    // Track URLs of removed images to delete them from storage
     const updatedDeletedUrls = [...state.deleted_image_urls];
 
     // If an image is being removed (set to null) and it had a URL, add it to deleted_image_urls
@@ -253,20 +255,20 @@ const usePropertyFormStore = create((set, get) => ({
     }
 
     // For extra images, data might come as new File list or updated URL list
-    let urlsToCheckAgainst = data.extra_image_urls || state.extra_image_urls;
-
-    if (state.extra_image_urls) {
-        const removedUrls = state.extra_image_urls.filter(url =>
-            !urlsToCheckAgainst.includes(url)
-        );
-        removedUrls.forEach(url => {
-            if (!updatedDeletedUrls.includes(url)) {
+    if (Array.isArray(data.extra_image_urls) && Array.isArray(state.extra_image_urls)) {
+        const currentUrls = new Set(data.extra_image_urls);
+        // Find URLs that were in the state but not in the new data (removed)
+        state.extra_image_urls.forEach(url => {
+            if (url && !currentUrls.has(url) && !updatedDeletedUrls.includes(url)) {
                 updatedDeletedUrls.push(url);
             }
         });
     }
 
-    // Update state, ensuring image URLs are updated if new files are provided
+    console.log("Deleted URLs:", updatedDeletedUrls);
+    console.log("Updating basic info with:", data);
+
+    // Update state with new values
     return {
         ...state,
         ...data,
@@ -369,38 +371,61 @@ const usePropertyFormStore = create((set, get) => ({
     // Helper function to clean up object URLs
     const cleanUpUrl = (url) => {
       if (url && typeof url === 'string' && url.startsWith('blob:')) {
-        URL.revokeObjectURL(url);
+        try {
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          // Silent catch to prevent any errors from breaking the app
+        }
       }
     };
-
+  
+    // Create a new copy of the image previews object to avoid mutation
     const newImagePreviews = { ...state.imagePreviews };
-
+  
     if (imageType === 'extra_images') {
+      // Handle extra images (array of previews)
+      if (index !== null) {
+        // Update or remove a specific image at index
         let currentExtraPreviews = [...(newImagePreviews.extra_images || [])];
-
-        if (index !== null) {
-            if (preview === null) {
-                const removedPreview = currentExtraPreviews.splice(index, 1)[0];
-                cleanUpUrl(removedPreview);
-            } else {
-                cleanUpUrl(currentExtraPreviews[index]);
-                currentExtraPreviews[index] = preview;
-            }
-            newImagePreviews.extra_images = currentExtraPreviews;
+        
+        if (preview === null) {
+          // Remove image at index
+          if (index >= 0 && index < currentExtraPreviews.length) {
+            cleanUpUrl(currentExtraPreviews[index]);
+            currentExtraPreviews.splice(index, 1);
+          }
         } else {
-            if (Array.isArray(newImagePreviews.extra_images)) {
-                newImagePreviews.extra_images.forEach(cleanUpUrl);
-            }
-            newImagePreviews.extra_images = Array.isArray(preview) ? preview : [];
+          // Update image at index
+          if (index >= 0 && index < currentExtraPreviews.length) {
+            cleanUpUrl(currentExtraPreviews[index]);
+            currentExtraPreviews[index] = preview;
+          } else if (index === currentExtraPreviews.length) {
+            // Append if it's the next index
+            currentExtraPreviews.push(preview);
+          }
         }
+        
+        newImagePreviews.extra_images = currentExtraPreviews;
+      } else {
+        // Replace entire array with new preview array
+        // First clean up any existing preview URLs
+        if (Array.isArray(newImagePreviews.extra_images)) {
+          newImagePreviews.extra_images.forEach(cleanUpUrl);
+        }
+        
+        // Set the new array (ensuring it's an array)
+        newImagePreviews.extra_images = Array.isArray(preview) ? [...preview] : [];
+      }
     } else {
-        cleanUpUrl(newImagePreviews[imageType]);
-        newImagePreviews[imageType] = preview;
+      // Handle single image (main, side1, side2)
+      cleanUpUrl(newImagePreviews[imageType]);
+      newImagePreviews[imageType] = preview;
     }
-
+  
+    // Return updated state
     return {
-        ...state,
-        imagePreviews: newImagePreviews
+      ...state,
+      imagePreviews: newImagePreviews
     };
   }),
 
@@ -432,100 +457,79 @@ const usePropertyFormStore = create((set, get) => ({
    */
   uploadAllImages: async () => {
     const {
+      mode,
       main_image, side_image1, side_image2, extra_images,
       main_image_url, side_image1_url, side_image2_url, extra_image_urls,
       deleted_image_urls, uploadImage
     } = get();
-
+  
     set({ isSubmitting: true, submitError: null });
-    console.log("Starting image processing...");
-    console.log("Deleted URLs before processing:", deleted_image_urls);
-
+    
     try {
-      const uploadPromises = [];
+      // Initialize final image URLs with existing URLs
       const finalImageUrls = {
         main_image_url: main_image_url,
         side_image1_url: side_image1_url,
         side_image2_url: side_image2_url,
         extra_image_urls: [...(extra_image_urls || [])]
       };
-
-      // Upload main image if it's a File object
+  
+      // Upload main image if it's a File object (replacing existing or adding new)
       if (main_image instanceof File) {
-        console.log('Uploading new main_image...');
-        uploadPromises.push(
-          uploadImage(main_image).then(url => {
-            if (url) finalImageUrls.main_image_url = url;
-          })
-        );
-      } else if (!main_image && main_image_url) {
-        finalImageUrls.main_image_url = "";
+        const url = await uploadImage(main_image);
+        if (url) finalImageUrls.main_image_url = url;
       }
-
+  
       // Upload side image 1 if it's a File object
       if (side_image1 instanceof File) {
-        console.log('Uploading new side_image1...');
-        uploadPromises.push(
-          uploadImage(side_image1).then(url => {
-            if (url) finalImageUrls.side_image1_url = url;
-          })
-        );
-      } else if (!side_image1 && side_image1_url) {
-        finalImageUrls.side_image1_url = "";
+        const url = await uploadImage(side_image1);
+        if (url) finalImageUrls.side_image1_url = url;
       }
-
+  
       // Upload side image 2 if it's a File object
       if (side_image2 instanceof File) {
-        console.log('Uploading new side_image2...');
-        uploadPromises.push(
-          uploadImage(side_image2).then(url => {
-            if (url) finalImageUrls.side_image2_url = url;
-          })
-        );
-      } else if (!side_image2 && side_image2_url) {
-        finalImageUrls.side_image2_url = "";
+        const url = await uploadImage(side_image2);
+        if (url) finalImageUrls.side_image2_url = url;
       }
-
-      // Process extra images
-      const extraImageUploadPromises = [];
+  
+      // Process extra images - keep existing URLs unless marked for deletion
+      // and add newly uploaded files
       const finalExtraUrls = [];
-
-      // Keep existing URLs that are not marked for deletion
-      (extra_image_urls || []).forEach(url => {
-        if (!deleted_image_urls.includes(url)) {
-          finalExtraUrls.push(url);
-        }
-      });
-
-      // Upload new files added to extra_images
-      if (Array.isArray(extra_images)) {
-        extra_images.forEach(img => {
-          if (img instanceof File) {
-            console.log('Uploading new extra_image...');
-            extraImageUploadPromises.push(uploadImage(img));
+      
+      // First, keep any existing URLs not marked for deletion
+      if (Array.isArray(extra_image_urls)) {
+        extra_image_urls.forEach(url => {
+          if (url && !deleted_image_urls.includes(url)) {
+            finalExtraUrls.push(url);
           }
         });
       }
-
-      // Wait for all uploads to complete
-      await Promise.all(uploadPromises);
-      const uploadedExtraUrls = await Promise.all(extraImageUploadPromises);
-
-      // Add successfully uploaded extra image URLs to the final list
-      finalImageUrls.extra_image_urls = [
-        ...finalExtraUrls, 
-        ...uploadedExtraUrls.filter(url => url !== null)
-      ];
-
-      console.log('Image uploads complete. Final URLs:', finalImageUrls);
-
-      // Delete images marked for deletion
-      const currentDeletedUrls = get().deleted_image_urls;
-      if (currentDeletedUrls && currentDeletedUrls.length > 0) {
-        console.log('Deleting images marked for deletion:', currentDeletedUrls);
-        await listingService.deleteMultipleImages(currentDeletedUrls);
+  
+      // Then, upload any new files added to extra_images
+      if (Array.isArray(extra_images)) {
+        for (const img of extra_images) {
+          if (img instanceof File) {
+            const url = await uploadImage(img);
+            if (url) {
+              finalExtraUrls.push(url);
+            }
+          }
+        }
       }
-
+  
+      // Set final URLs
+      finalImageUrls.extra_image_urls = finalExtraUrls;
+  
+      // Delete images marked for deletion
+      if (deleted_image_urls && deleted_image_urls.length > 0) {
+        try {
+          await listingService.deleteMultipleImages(deleted_image_urls);
+        } catch (error) {
+          console.error('Error deleting images:', error);
+          // Continue execution even if deletion fails
+        }
+      }
+  
       // Update state with the final image URLs and clear deletion list
       set({
         main_image_url: finalImageUrls.main_image_url,
@@ -537,10 +541,19 @@ const usePropertyFormStore = create((set, get) => ({
         side_image2: null,
         extra_images: [],
         deleted_image_urls: [],
-        isSubmitting: false
+        isSubmitting: false,
+        // Also update image previews with the final URLs for consistency
+        imagePreviews: {
+          ...get().imagePreviews,
+          main_image: finalImageUrls.main_image_url || get().imagePreviews.main_image,
+          side_image1: finalImageUrls.side_image1_url || get().imagePreviews.side_image1,
+          side_image2: finalImageUrls.side_image2_url || get().imagePreviews.side_image2,
+          extra_images: finalImageUrls.extra_image_urls.length > 0 
+            ? [...finalImageUrls.extra_image_urls] 
+            : get().imagePreviews.extra_images
+        }
       });
 
-      console.log("Image processing complete.");
       return true;
     } catch (error) {
       console.error('Error processing images:', error);
@@ -690,7 +703,11 @@ const usePropertyFormStore = create((set, get) => ({
     // Clean up object URLs
     const cleanUpUrl = (url) => {
       if (url && typeof url === 'string' && url.startsWith('blob:')) {
-        URL.revokeObjectURL(url);
+        try {
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          console.error("Error revoking object URL:", error);
+        }
       }
     };
 

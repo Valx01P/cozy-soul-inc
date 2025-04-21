@@ -202,23 +202,25 @@ const useAuthStore = create(
       clearError: () => set({ error: null }),
 
       updateProfile: async (profileUpdateData) => {
-        set({ isLoading: true, error: null })
+        set({ isLoading: true, error: null });
         
         try {
-          const userData = await userService.updateMe(profileUpdateData)
+          // Send the update data (which may include the profile_image URL)
+          const userData = await userService.updateMe(profileUpdateData);
           
+          // Update the user state with the returned data
           set({
             user: {
               ...get().user,
               ...userData
             },
             isLoading: false
-          })
+          });
           
-          return userData
+          return userData;
         } catch (error) {
-          set({ error: error.message, isLoading: false })
-          throw error
+          set({ error: error.message, isLoading: false });
+          throw error;
         }
       },
     }),
