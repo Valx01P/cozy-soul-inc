@@ -1,12 +1,12 @@
-// src/app/components/admin/AdminProfileModal.jsx
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { X, Camera, Upload, Link as LinkIcon, Loader } from 'lucide-react';
-import useAuthStore from '../../stores/authStore';
 import Image from 'next/image';
+import { X, Camera, Upload, Link as LinkIcon, Loader } from 'lucide-react';
+import useAuthStore from '@/app/stores/authStore';
+import { format } from 'date-fns';
 
 export default function AdminProfileModal({ isOpen, onClose }) {
-  const { user, updateProfile, isLoading, error } = useAuthStore();
+  const { user, updateProfile, uploadProfileImage, deleteProfileImage } = useAuthStore((state) => state);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -20,6 +20,7 @@ export default function AdminProfileModal({ isOpen, onClose }) {
   const [imageUploadType, setImageUploadType] = useState('file'); // 'file', 'url', or 'camera'
   const [imageUrl, setImageUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [oldImageUrl, setOldImageUrl] = useState('');
   
   // Camera state
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -44,9 +45,10 @@ export default function AdminProfileModal({ isOpen, onClose }) {
       
       if (user.profile_image) {
         setProfileImagePreview(user.profile_image);
+        setOldImageUrl(user.profile_image);
       }
     }
-  }, [user]);
+  }, [user, isOpen]);
   
   // Cleanup camera resources when component unmounts
   useEffect(() => {
@@ -56,6 +58,34 @@ export default function AdminProfileModal({ isOpen, onClose }) {
       }
     };
   }, [stream]);
+  
+  // Close modal with ESC key
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape') {
+        closeCamera();
+        onClose();
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscKey);
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [onClose]);
+  
+  // Prevent scrolling when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
   
   // Handle form input changes
   const handleInputChange = (e) => {
@@ -184,47 +214,6 @@ export default function AdminProfileModal({ isOpen, onClose }) {
     setErrorMessage('');
   };
   
-  // Upload image file to server
-  const uploadImage = async (file) => {
-    if (!file) return null;
-    
-    setIsUploading(true);
-    
-    try {
-      // Create form data for file upload
-      const formData = new FormData();
-      formData.append('images', file);
-      
-      // Upload the file
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/upload`, {
-        method: 'POST',
-        credentials: 'include',
-        body: formData
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to upload image');
-      }
-      
-      // Get the uploaded image URL
-      const urls = await response.json();
-      
-      if (!urls || !urls.length) {
-        throw new Error('No image URL returned from server');
-      }
-      
-      // Return the first URL (we only uploaded one image)
-      return urls[0];
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      setErrorMessage(`Failed to upload image: ${error.message}`);
-      return null;
-    } finally {
-      setIsUploading(false);
-    }
-  };
-  
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -237,50 +226,76 @@ export default function AdminProfileModal({ isOpen, onClose }) {
       return;
     }
     
-    // Prepare update data
-    const updateData = {
-      first_name: formData.first_name,
-      last_name: formData.last_name,
-    };
-    
     try {
-      // Handle image update
+      setIsUploading(true);
+      
+      // Prepare update data
+      const updateData = {
+        first_name: formData.first_name,
+        last_name: formData.last_name
+      };
+      
+      // Handle profile image upload
       if (profileImage) {
-        // If we have a file, upload it first
-        const imageUrl = await uploadImage(profileImage);
-        if (imageUrl) {
+        try {
+          // For file/camera uploads, upload to our API endpoint
+          const imageUrl = await uploadProfileImage(profileImage);
           updateData.profile_image = imageUrl;
+          
+          // If we had a previous image that was not the default, delete it
+          if (oldImageUrl && !oldImageUrl.includes('placehold.co') 
+              && oldImageUrl.includes('profile-images')) {
+            try {
+              await deleteProfileImage(oldImageUrl);
+            } catch (err) {
+              console.error('Failed to delete old profile image:', err);
+              // Continue anyway since update is more important
+            }
+          }
+        } catch (err) {
+          console.error('Error uploading profile image:', err);
+          setErrorMessage('Failed to upload profile image. Please try again.');
+          setIsUploading(false);
+          return;
         }
       } else if (imageUploadType === 'url' && profileImagePreview && profileImagePreview !== user?.profile_image) {
-        // If we have a URL and it's different from the current one
         updateData.profile_image = profileImagePreview;
       }
       
-      // Update profile with the prepared data
+      // Call the update API
       await updateProfile(updateData);
       
       // Show success message
       setSuccessMessage('Profile updated successfully!');
       
-      // Clear success message after 3 seconds
+      // Clear success message after 3 seconds and close modal
       setTimeout(() => {
         setSuccessMessage('');
+        onClose();
       }, 3000);
-      
     } catch (err) {
       console.error('Error updating profile:', err);
-      setErrorMessage(err.message || 'Failed to update profile');
+      setErrorMessage(err.message || 'Failed to update profile. Please try again.');
+    } finally {
+      setIsUploading(false);
     }
   };
-
+  
+  // Format date helper
+  const formatJoinDate = (dateString) => {
+    if (!dateString) return "Unknown";
+    const date = new Date(dateString);
+    return format(date, 'MMMM yyyy');
+  };
+  
   if (!isOpen) return null;
-
+  
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Edit Your Profile</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Edit Admin Profile</h2>
           <button
             type="button"
             onClick={onClose}
@@ -288,6 +303,26 @@ export default function AdminProfileModal({ isOpen, onClose }) {
           >
             <X size={20} />
           </button>
+        </div>
+        
+        {/* User info summary */}
+        <div className="p-4 bg-gray-100 rounded-lg mb-6">
+          <div className="flex items-center">
+            <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-sm mr-4">
+              <Image
+                src={user?.profile_image || "https://placehold.co/400/gray/white?text=Admin"}
+                alt={`${user?.first_name || ''} ${user?.last_name || ''}`}
+                fill
+                className="object-cover"
+              />
+            </div>
+            <div>
+              <h4 className="text-lg font-medium">{user?.first_name} {user?.last_name}</h4>
+              <p className="text-sm text-gray-500">{user?.email}</p>
+              <p className="text-xs font-medium text-blue-600 mt-1">Administrator</p>
+              <p className="text-xs text-gray-400 mt-1">Member since {formatJoinDate(user?.created_at)}</p>
+            </div>
+          </div>
         </div>
         
         {/* Profile Image Section */}
@@ -315,7 +350,7 @@ export default function AdminProfileModal({ isOpen, onClose }) {
                 </>
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-500">
-                  {user?.first_name?.charAt(0) || 'A'}
+                  {user?.first_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'A'}
                 </div>
               )}
               
@@ -474,6 +509,20 @@ export default function AdminProfileModal({ isOpen, onClose }) {
                 disabled
               />
             </div>
+
+            {/* Read-only Role */}
+            <div>
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                Role
+              </label>
+              <input
+                type="text"
+                id="role"
+                value="Administrator"
+                className="mt-1 block w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-500 cursor-not-allowed"
+                disabled
+              />
+            </div>
           </div>
           
           {/* Success or error message */}
@@ -483,9 +532,9 @@ export default function AdminProfileModal({ isOpen, onClose }) {
             </div>
           )}
           
-          {(errorMessage || error) && (
+          {errorMessage && (
             <div className="mt-4 p-2 bg-red-100 text-red-700 rounded-md text-sm">
-              {errorMessage || error}
+              {errorMessage}
             </div>
           )}
           
@@ -500,10 +549,10 @@ export default function AdminProfileModal({ isOpen, onClose }) {
             </button>
             <button
               type="submit"
-              disabled={isLoading || isUploading}
+              disabled={isUploading}
               className="px-4 py-2 bg-[var(--primary-red)] text-white rounded-md text-sm font-medium hover:bg-[var(--primary-red-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-red)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading || isUploading ? 'Saving...' : 'Save Changes'}
+              {isUploading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>
