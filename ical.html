@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple iCal Calendar App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        
+        .container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .calendar-container {
+            flex: 2;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        
+        .controls {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        
+        .calendar {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .calendar th {
+            background-color: #f0f0f0;
+            color: #333;
+            padding: 10px;
+            text-align: center;
+        }
+        
+        .calendar td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 80px;
+            vertical-align: top;
+            width: 14.28%;
+        }
+        
+        .calendar .day-number {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .calendar .other-month {
+            color: #aaa;
+            background-color: #f9f9f9;
+        }
+        
+        .calendar-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .event {
+            background-color: #e6f7ff;
+            border-left: 3px solid #1890ff;
+            padding: 3px 5px;
+            font-size: 12px;
+            margin-bottom: 2px;
+            border-radius: 2px;
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .import-export {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+        
+        .event-list {
+            margin-top: 20px;
+        }
+        
+        .event-item {
+            background-color: #f9f9f9;
+            border-left: 3px solid #1890ff;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        
+        .event-item h3 {
+            margin-top: 0;
+            margin-bottom: 5px;
+        }
+        
+        .event-item p {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+        }
+        
+        #file-input {
+            display: none;
+        }
+        
+        .file-upload {
+            display: inline-block;
+            background-color: #1890ff;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .file-upload:hover {
+            background-color: #1273d4;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple iCal Calendar App</h1>
+    
+    <div class="container">
+        <div class="calendar-container">
+            <div class="calendar-nav">
+                <button id="prev-month">&lt; Previous</button>
+                <h2 id="current-month">Month Year</h2>
+                <button id="next-month">Next &gt;</button>
+            </div>
+            <table class="calendar" id="calendar">
+                <thead>
+                    <tr>
+                        <th>Sun</th>
+                        <th>Mon</th>
+                        <th>Tue</th>
+                        <th>Wed</th>
+                        <th>Thu</th>
+                        <th>Fri</th>
+                        <th>Sat</th>
+                    </tr>
+                </thead>
+                <tbody id="calendar-body">
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="controls">
+            <h2>Add Event</h2>
+            <form id="event-form">
+                <div class="form-group">
+                    <label for="event-title">Event Title</label>
+                    <input type="text" id="event-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-date">Date</label>
+                    <input type="date" id="event-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-time">Time</label>
+                    <input type="time" id="event-time">
+                </div>
+                <div class="form-group">
+                    <label for="event-duration">Duration (minutes)</label>
+                    <input type="number" id="event-duration" value="60" min="15" step="15">
+                </div>
+                <div class="form-group">
+                    <label for="event-location">Location</label>
+                    <input type="text" id="event-location">
+                </div>
+                <div class="form-group">
+                    <label for="event-description">Description</label>
+                    <textarea id="event-description" rows="3"></textarea>
+                </div>
+                <button type="submit">Add Event</button>
+            </form>
+            
+            <div class="import-export">
+                <h2>Import/Export</h2>
+                <button id="export-button">Export as iCal</button>
+                <label for="file-input" class="file-upload">Import iCal File</label>
+                <input type="file" id="file-input" accept=".ics">
+            </div>
+            
+            <div class="event-list">
+                <h2>Imported Events</h2>
+                <div id="imported-events"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Calendar setup and variables
+        const today = new Date();
+        let currentMonth = today.getMonth();
+        let currentYear = today.getFullYear();
+        const calendarBody = document.getElementById('calendar-body');
+        const currentMonthElement = document.getElementById('current-month');
+        const prevMonthButton = document.getElementById('prev-month');
+        const nextMonthButton = document.getElementById('next-month');
+        const eventForm = document.getElementById('event-form');
+        const exportButton = document.getElementById('export-button');
+        const fileInput = document.getElementById('file-input');
+        const importedEventsContainer = document.getElementById('imported-events');
+        
+        // Store the events
+        let events = [];
+        
+        // Initialize the calendar
+        function initCalendar() {
+            showCalendar(currentMonth, currentYear);
+            
+            // Event listeners
+            prevMonthButton.addEventListener('click', previousMonth);
+            nextMonthButton.addEventListener('click', nextMonth);
+            eventForm.addEventListener('submit', addEvent);
+            exportButton.addEventListener('click', exportCalendar);
+            fileInput.addEventListener('change', importCalendar);
+            
+            // Load events from localStorage if available
+            const savedEvents = localStorage.getItem('calendarEvents');
+            if (savedEvents) {
+                events = JSON.parse(savedEvents);
+                refreshCalendar();
+            }
+        }
+        
+        // Show the calendar for a given month and year
+        function showCalendar(month, year) {
+            // Update the current month display
+            const months = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+            ];
+            currentMonthElement.textContent = `${months[month]} ${year}`;
+            
+            // Clear the calendar
+            calendarBody.innerHTML = '';
+            
+            // Get the first day of the month
+            const firstDay = new Date(year, month, 1);
+            const startingDay = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
+            
+            // Get the number of days in the month
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            // Get the number of days in the previous month
+            const daysInPrevMonth = new Date(year, month, 0).getDate();
+            
+            let date = 1;
+            let nextMonthDate = 1;
+            
+            // Create the rows and cells
+            for (let i = 0; i < 6; i++) {
+                // Create a row
+                const row = document.createElement('tr');
+                
+                // Create the cells
+                for (let j = 0; j < 7; j++) {
+                    const cell = document.createElement('td');
+                    
+                    // Previous month days
+                    if (i === 0 && j < startingDay) {
+                        const prevMonthDay = daysInPrevMonth - startingDay + j + 1;
+                        cell.innerHTML = `<div class="day-number other-month">${prevMonthDay}</div>`;
+                        row.appendChild(cell);
+                    }
+                    // Current month days
+                    else if (date <= daysInMonth) {
+                        cell.innerHTML = `<div class="day-number">${date}</div>`;
+                        cell.setAttribute('data-date', `${year}-${(month + 1).toString().padStart(2, '0')}-${date.toString().padStart(2, '0')}`);
+                        
+                        // Current day highlight
+                        if (date === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                            cell.style.backgroundColor = '#fffcf4';
+                            cell.style.fontWeight = 'bold';
+                            cell.style.border = '1px solid #ffcf4a';
+                        }
+                        
+                        row.appendChild(cell);
+                        date++;
+                    }
+                    // Next month days
+                    else {
+                        cell.innerHTML = `<div class="day-number other-month">${nextMonthDate}</div>`;
+                        row.appendChild(cell);
+                        nextMonthDate++;
+                    }
+                }
+                
+                calendarBody.appendChild(row);
+                
+                // Stop if all days of the month are rendered
+                if (date > daysInMonth) {
+                    break;
+                }
+            }
+            
+            // Display events on the calendar
+            displayEvents();
+        }
+        
+        // Navigate to the previous month
+        function previousMonth() {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            showCalendar(currentMonth, currentYear);
+        }
+        
+        // Navigate to the next month
+        function nextMonth() {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            showCalendar(currentMonth, currentYear);
+        }
+        
+        // Add a new event
+        function addEvent(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('event-title').value;
+            const date = document.getElementById('event-date').value;
+            const time = document.getElementById('event-time').value || '00:00';
+            const duration = document.getElementById('event-duration').value;
+            const location = document.getElementById('event-location').value;
+            const description = document.getElementById('event-description').value;
+            
+            const startDate = new Date(`${date}T${time}`);
+            const endDate = new Date(startDate.getTime() + duration * 60000);
+            
+            const newEvent = {
+                id: Date.now().toString(),
+                title,
+                start: startDate,
+                end: endDate,
+                location,
+                description
+            };
+            
+            events.push(newEvent);
+            
+            // Save to localStorage
+            localStorage.setItem('calendarEvents', JSON.stringify(events));
+            
+            // Reset the form
+            eventForm.reset();
+            
+            // Refresh the calendar
+            refreshCalendar();
+            
+            alert('Event added successfully!');
+        }
+        
+        // Display events on the calendar
+        function displayEvents() {
+            if (events.length === 0) return;
+            
+            events.forEach(event => {
+                const eventDate = new Date(event.start);
+                if (eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear) {
+                    const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${eventDate.getDate().toString().padStart(2, '0')}`;
+                    const cell = document.querySelector(`td[data-date="${dateStr}"]`);
+                    
+                    if (cell) {
+                        const eventDiv = document.createElement('div');
+                        eventDiv.className = 'event';
+                        eventDiv.textContent = event.title;
+                        eventDiv.title = `${event.title}\nTime: ${formatTime(eventDate)}\nLocation: ${event.location || 'N/A'}\nDescription: ${event.description || 'N/A'}`;
+                        cell.appendChild(eventDiv);
+                    }
+                }
+            });
+        }
+        
+        // Format time to readable string
+        function formatTime(date) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        // Refresh the calendar display
+        function refreshCalendar() {
+            showCalendar(currentMonth, currentYear);
+        }
+        
+        // Export calendar as iCal (.ics) file
+        function exportCalendar() {
+            if (events.length === 0) {
+                alert('No events to export!');
+                return;
+            }
+            
+            // Create the iCal content
+            let icalContent = [
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                'PRODID:-//Simple iCal Calendar App//EN',
+                'CALSCALE:GREGORIAN',
+                'METHOD:PUBLISH'
+            ];
+            
+            // Add events
+            events.forEach(event => {
+                icalContent.push('BEGIN:VEVENT');
+                icalContent.push(`UID:${event.id}`);
+                icalContent.push(`DTSTAMP:${formatDateForICal(new Date())}`);
+                icalContent.push(`DTSTART:${formatDateForICal(new Date(event.start))}`);
+                icalContent.push(`DTEND:${formatDateForICal(new Date(event.end))}`);
+                icalContent.push(`SUMMARY:${event.title}`);
+                
+                if (event.description) {
+                    icalContent.push(`DESCRIPTION:${event.description.replace(/\n/g, '\\n')}`);
+                }
+                
+                if (event.location) {
+                    icalContent.push(`LOCATION:${event.location}`);
+                }
+                
+                icalContent.push('END:VEVENT');
+            });
+            
+            icalContent.push('END:VCALENDAR');
+            
+            // Create and download the file
+            const blob = new Blob([icalContent.join('\r\n')], { type: 'text/calendar' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'calendar.ics';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        // Format date for iCal format
+        function formatDateForICal(date) {
+            return date.toISOString().replace(/-|:|\.\d{3}/g, '');
+        }
+        
+        // Import iCal (.ics) file
+        function importCalendar(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const content = event.target.result;
+                parseICalFile(content);
+            };
+            reader.readAsText(file);
+        }
+        
+        // Parse iCal file
+        function parseICalFile(content) {
+            // Clear the imported events display
+            importedEventsContainer.innerHTML = '';
+            
+            // Basic parsing of iCal format
+            const lines = content.split(/\r\n|\n|\r/);
+            let currentEvent = null;
+            let importedEvents = [];
+            
+            lines.forEach(line => {
+                if (line === 'BEGIN:VEVENT') {
+                    currentEvent = {};
+                } else if (line === 'END:VEVENT' && currentEvent) {
+                    importedEvents.push(currentEvent);
+                    currentEvent = null;
+                } else if (currentEvent) {
+                    const [key, value] = line.split(':');
+                    
+                    if (key === 'SUMMARY') {
+                        currentEvent.title = value;
+                    } else if (key === 'DTSTART') {
+                        currentEvent.start = parseICalDate(value);
+                    } else if (key === 'DTEND') {
+                        currentEvent.end = parseICalDate(value);
+                    } else if (key === 'DESCRIPTION') {
+                        currentEvent.description = value.replace(/\\n/g, '\n');
+                    } else if (key === 'LOCATION') {
+                        currentEvent.location = value;
+                    } else if (key === 'UID') {
+                        currentEvent.id = value;
+                    }
+                }
+            });
+            
+            // Display the imported events
+            if (importedEvents.length > 0) {
+                importedEvents.forEach(event => {
+                    const eventDiv = document.createElement('div');
+                    eventDiv.className = 'event-item';
+                    
+                    const title = document.createElement('h3');
+                    title.textContent = event.title || 'Untitled Event';
+                    eventDiv.appendChild(title);
+                    
+                    if (event.start) {
+                        const date = document.createElement('p');
+                        date.textContent = `Date: ${formatDate(new Date(event.start))}`;
+                        eventDiv.appendChild(date);
+                    }
+                    
+                    if (event.start && event.end) {
+                        const time = document.createElement('p');
+                        time.textContent = `Time: ${formatTime(new Date(event.start))} - ${formatTime(new Date(event.end))}`;
+                        eventDiv.appendChild(time);
+                    }
+                    
+                    if (event.location) {
+                        const location = document.createElement('p');
+                        location.textContent = `Location: ${event.location}`;
+                        eventDiv.appendChild(location);
+                    }
+                    
+                    if (event.description) {
+                        const description = document.createElement('p');
+                        description.textContent = `Description: ${event.description}`;
+                        eventDiv.appendChild(description);
+                    }
+                    
+                    importedEventsContainer.appendChild(eventDiv);
+                });
+                
+                alert(`Successfully imported ${importedEvents.length} events!`);
+            } else {
+                alert('No events found in the imported file.');
+            }
+        }
+        
+        // Parse iCal date format
+        function parseICalDate(value) {
+            // Basic format: YYYYMMDDTHHMMSSZ
+            const year = value.substr(0, 4);
+            const month = value.substr(4, 2) - 1; // JS months are 0-based
+            const day = value.substr(6, 2);
+            
+            let hours = 0, minutes = 0, seconds = 0;
+            
+            if (value.includes('T')) {
+                hours = value.substr(9, 2);
+                minutes = value.substr(11, 2);
+                seconds = value.substr(13, 2);
+            }
+            
+            return new Date(year, month, day, hours, minutes, seconds);
+        }
+        
+        // Format date for display
+        function formatDate(date) {
+            return date.toLocaleDateString([], { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+        
+        // Initialize the calendar on page load
+        document.addEventListener('DOMContentLoaded', initCalendar);
+    </script>
+</body>
+</html>
