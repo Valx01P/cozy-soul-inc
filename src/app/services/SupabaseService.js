@@ -1,5 +1,7 @@
 import supabase from './supabase'; // Adjust the path to your Supabase client setup
 
+/* UNUSED */
+
 /**
  * A class to interact with a Supabase database and storage buckets.
  * Provides methods for CRUD operations on tables and managing files in storage.
