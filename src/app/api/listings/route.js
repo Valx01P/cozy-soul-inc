@@ -3,10 +3,6 @@ import { NextResponse } from 'next/server'
 import { verifyToken, getAuthTokens } from '@/app/lib/auth'
 import supabase from '@/app/services/supabase'
 
-export const config = {
-  maxDuration: 90 // Extends timeout to 60 seconds
-};
-
 /**
  * GET all listings with optional filtering
  * 
