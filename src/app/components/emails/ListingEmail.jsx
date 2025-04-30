@@ -138,16 +138,6 @@ export default function ListingEmail({
                 objectFit: 'cover'
               }}
             />
-
-            <Text style={{ 
-              margin: '16px 0 8px', 
-              color: darkGray,
-              fontSize: '26px',
-              fontWeight: '800',
-              letterSpacing: '-0.3px',
-            }}>
-              ${propertyDetails.price}
-            </Text>
             
             <Text style={{ 
               margin: '12px 0 24px', 

@@ -75,12 +75,25 @@ export default function PropertyContactPage({ params }) {
     setIsSubmitting(true)
     
     try {
-      const response = await fetch('/api/email', {
+      // FIXED: Using the correct API endpoint for email
+      const response = await fetch('/api/email/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone || '',
+          message: formData.message,
+          property_info: {
+            id: id,
+            title: property.title,
+            main_image: property.main_image,
+            location: property.location ? `${property.location.city}, ${property.location.state}, ${property.location.country}` : '',
+            // Send any other property details needed
+          }
+        })
       })
       
       const data = await response.json()
@@ -101,10 +114,11 @@ export default function PropertyContactPage({ params }) {
       } else {
         setFormStatus({
           success: false,
-          message: data.message || 'Something went wrong. Please try again later.'
+          message: data.error || 'Something went wrong. Please try again later.'
         })
       }
     } catch (error) {
+      console.error("Email sending error:", error);
       setFormStatus({
         success: false,
         message: 'Failed to send message. Please try again later.'
@@ -181,11 +195,6 @@ export default function PropertyContactPage({ params }) {
             <div>
               <h2 className="text-xl font-semibold">{property.title}</h2>
               <p className="text-gray-600 mb-2">{property.location.city}, {property.location.state}</p>
-              <p className="font-bold text-lg">
-                {property.currency === 'USD' ? '$' : property.currency === 'EUR' ? '€' : property.currency === 'GBP' ? '£' : '$'}
-                {formatPrice(property.price)}
-                <span className="text-gray-500 font-normal text-base ml-1">/ {property.price_description || 'night'}</span>
-              </p>
             </div>
           </div>
           

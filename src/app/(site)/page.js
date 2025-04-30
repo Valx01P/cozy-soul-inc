@@ -129,47 +129,6 @@ export default function HomePage() {
           )}
         </div>
       </section>
-      
-      {/* Trust Indicators Section */}
-      <section className="bg-white py-16">
-        <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl font-bold text-gray-800 text-center mb-12">Why Book With Us</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="bg-gray-50 rounded-xl p-6 text-center transition-transform hover:shadow-lg hover:scale-105">
-                <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold mb-3">Verified Listings</h3>
-                <p className="text-gray-600">All our properties are personally inspected to ensure quality standards.</p>
-              </div>
-              
-              <div className="bg-gray-50 rounded-xl p-6 text-center transition-transform hover:shadow-lg hover:scale-105">
-                <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold mb-3">Flexible Payments</h3>
-                <p className="text-gray-600">Pay in installments with no hidden fees and secure transactions.</p>
-              </div>
-              
-              <div className="bg-gray-50 rounded-xl p-6 text-center transition-transform hover:shadow-lg hover:scale-105">
-                <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold mb-3">24/7 Support</h3>
-                <p className="text-gray-600">Our dedicated support team is available around the clock for your convenience.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
     </main>
   );
 }
