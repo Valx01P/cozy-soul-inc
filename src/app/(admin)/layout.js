@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import useAuthStore from "../stores/authStore";
-import Loading from "../components/archive/Loading";
+import Loading from "../components/site/Loading";
 import AdminNavbar from '../components/admin/AdminNav';
 
 export default function AdminLayout({ children }) {

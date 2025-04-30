@@ -113,7 +113,7 @@ export default function Navbar() {
                     <>
                       <div className="px-4 py-2">
                         <p className="text-sm font-semibold">Welcome, {user?.first_name}</p>
-                        <p className="text-xs text-gray-500">{user?.email}</p>
+                        <p className="text-xs text-gray-500 truncate overflow-hidden">{user?.email}</p>
                       </div>
                       {user.role === 'admin' && (
                         <>

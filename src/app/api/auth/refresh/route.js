@@ -43,55 +43,53 @@ CREATE TABLE users (
     "error": "Some error message"
   }
 */
+// src/app/api/auth/refresh/route.js
+
 export async function POST() {
   try {
-    const { refreshToken } = await getAuthTokens()
+    const { refreshToken } = await getAuthTokens();
     
     if (!refreshToken) {
-      return NextResponse.json({ error: 'Refresh token is required' }, { status: 401 })
+      return NextResponse.json({ error: 'Refresh token is required' }, { status: 401 });
     }
     
-    const payload = await verifyRefreshToken(refreshToken)
+    const payload = await verifyRefreshToken(refreshToken);
     
     if (!payload || !payload.user_id) {
-      return NextResponse.json({ error: 'Invalid refresh token' }, { status: 401 })
+      return NextResponse.json({ error: 'Invalid refresh token' }, { status: 401 });
     }
     
-    // Query the database to get the latest user data
+    // Only select the fields we need - this improves query performance
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id, first_name, last_name, email, role, email_verified, identity_verified')
       .eq('id', payload.user_id)
-      .single()
+      .single();
     
     if (userError) {
-      console.error('Error fetching user data during token refresh:', userError)
-      return NextResponse.json({ error: 'Failed to refresh tokens' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to refresh tokens' }, { status: 500 });
     }
     
-    // Create a new payload with the latest user data from the database
     const newPayload = {
       user_id: user.id,
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,
-      role: user.role, // Now using the latest role from database
+      role: user.role,
       email_verified: user.email_verified,
       identity_verified: user.identity_verified
-    }
+    };
     
-    const newAccessToken = await generateAccessToken(newPayload)
-    const newRefreshToken = await generateRefreshToken(newPayload)
+    // Generate tokens in parallel for better performance
+    const [newAccessToken, newRefreshToken] = await Promise.all([
+      generateAccessToken(newPayload),
+      generateRefreshToken(newPayload)
+    ]);
 
-    await setAuthCookies(newAccessToken, newRefreshToken)
+    await setAuthCookies(newAccessToken, newRefreshToken);
 
-    const response = {
-      message: 'Tokens refreshed successfully'
-    }
-
-    return NextResponse.json(response, { status: 200 })
+    return NextResponse.json({ message: 'Tokens refreshed successfully' }, { status: 200 });
   } catch (error) {
-    console.error('Refresh token error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Authentication error' }, { status: 500 });
   }
 }

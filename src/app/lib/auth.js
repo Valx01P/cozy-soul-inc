@@ -2,13 +2,22 @@
 import * as jose from 'jose';
 import { cookies } from 'next/headers';
 
-// Create secret keys from environment variables
+// Cache encoded secrets
+let ACCESS_SECRET, REFRESH_SECRET;
+
+// Initialize secrets once instead of on every request
 const getAccessSecret = async () => {
-  return new TextEncoder().encode(process.env.JWT_SECRET);
+  if (!ACCESS_SECRET) {
+    ACCESS_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
+  }
+  return ACCESS_SECRET;
 };
 
 const getRefreshSecret = async () => {
-  return new TextEncoder().encode(process.env.JWT_REFRESH_SECRET);
+  if (!REFRESH_SECRET) {
+    REFRESH_SECRET = new TextEncoder().encode(process.env.JWT_REFRESH_SECRET);
+  }
+  return REFRESH_SECRET;
 };
 
 /**
@@ -50,7 +59,7 @@ export async function verifyToken(token) {
     const { payload } = await jose.jwtVerify(token, secret);
     return payload;
   } catch (error) {
-    console.error('Token verification failed:', error.message);
+    // Simplified error handling
     return null;
   }
 }
@@ -66,7 +75,7 @@ export async function verifyRefreshToken(token) {
     const { payload } = await jose.jwtVerify(token, secret);
     return payload;
   } catch (error) {
-    console.error('Refresh token verification failed:', error.message);
+    // Simplified error handling
     return null;
   }
 }
@@ -144,7 +153,7 @@ export async function getAuthTokens(request) {
  */
 export async function getLoggedInUser() {
   try {
-    const { accessToken, refreshToken } = await getAuthTokens();
+    const { accessToken } = await getAuthTokens();
     
     if (!accessToken) {
       return null;
@@ -166,7 +175,6 @@ export async function getLoggedInUser() {
       identityVerified: payload.identity_verified
     };
   } catch (error) {
-    console.error('Error getting logged in user:', error);
     return null;
   }
 }
