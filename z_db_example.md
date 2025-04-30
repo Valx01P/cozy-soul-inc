@@ -238,8 +238,69 @@ CREATE TABLE identityverifications (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+
+CREATE INDEX IF NOT EXISTS idx_properties_is_active ON properties(is_active);
+CREATE INDEX IF NOT EXISTS idx_properties_host_id ON properties(host_id);
+CREATE INDEX IF NOT EXISTS idx_properties_location_id ON properties(location_id);
+
+-- Property amenities indexes
+CREATE INDEX IF NOT EXISTS idx_propertyamenities_property_id ON propertyamenities(property_id);
+CREATE INDEX IF NOT EXISTS idx_propertyamenities_amenity_id ON propertyamenities(amenity_id);
+
+-- Property images indexes
+CREATE INDEX IF NOT EXISTS idx_propertyimages_property_id ON propertyimages(property_id);
+
+-- Property availability indexes
+CREATE INDEX IF NOT EXISTS idx_propertyavailability_property_id ON propertyavailability(property_id);
+CREATE INDEX IF NOT EXISTS idx_propertyavailability_dates ON propertyavailability(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_propertyavailability_is_available ON propertyavailability(is_available);
+
+-- Amenities indexes
+CREATE INDEX IF NOT EXISTS idx_amenities_category_id ON amenities(category_id);
+CREATE INDEX IF NOT EXISTS idx_amenities_name ON amenities(name);
+
+-- Locations indexes
+CREATE INDEX IF NOT EXISTS idx_locations_city_state ON locations(city, state);
+CREATE INDEX IF NOT EXISTS idx_locations_country ON locations(country);
+CREATE INDEX IF NOT EXISTS idx_locations_geo ON locations(latitude, longitude);
+
+-- Users indexes
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 ```
 
+__* Drop only indices *__
+```sql
+-- Remove property indexes
+DROP INDEX IF EXISTS idx_properties_is_active;
+DROP INDEX IF EXISTS idx_properties_host_id;
+DROP INDEX IF EXISTS idx_properties_location_id;
+
+-- Remove property amenities indexes
+DROP INDEX IF EXISTS idx_propertyamenities_property_id;
+DROP INDEX IF EXISTS idx_propertyamenities_amenity_id;
+
+-- Remove property images indexes
+DROP INDEX IF EXISTS idx_propertyimages_property_id;
+
+-- Remove property availability indexes
+DROP INDEX IF EXISTS idx_propertyavailability_property_id;
+DROP INDEX IF EXISTS idx_propertyavailability_dates;
+DROP INDEX IF EXISTS idx_propertyavailability_is_available;
+
+-- Remove amenities indexes
+DROP INDEX IF EXISTS idx_amenities_category_id;
+DROP INDEX IF EXISTS idx_amenities_name;
+
+-- Remove locations indexes
+DROP INDEX IF EXISTS idx_locations_city_state;
+DROP INDEX IF EXISTS idx_locations_country;
+DROP INDEX IF EXISTS idx_locations_geo;
+
+-- Remove users indexes
+DROP INDEX IF EXISTS idx_users_role;
+DROP INDEX IF EXISTS idx_users_email;
+```
 
 __* Drop Database *__
 ```sql

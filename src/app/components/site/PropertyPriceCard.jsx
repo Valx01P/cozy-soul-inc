@@ -1,10 +1,11 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from "next/link"
 import Image from "next/image"
-import { MessageCircle, MapPin, Users, Home } from "lucide-react"
+import { MessageCircle, MapPin, Users, Home, Calendar } from "lucide-react"
 import useAuthStore from '@/app/stores/authStore'
 import { useRouter } from 'next/navigation'
+import AvailabilityCalendar from './AvailabilityCalendar'
 
 // Function to format the price with commas
 const formatPrice = (price) => {
@@ -53,6 +54,7 @@ export default function PropertyPriceCard({ property, id }) {
   const { isAuthenticated, user } = useAuthStore()
   const [error, setError] = useState('')
   const router = useRouter()
+  const [showCalendar, setShowCalendar] = useState(false)
 
   // Handle contact host button click
   const handleContactClick = () => {
@@ -89,6 +91,16 @@ export default function PropertyPriceCard({ property, id }) {
             <span>${formatPrice(totalPrice)} total for 5 nights</span>
           </div>
         </div>
+        
+        {/* View Availability Calendar Button */}
+        <button 
+          type="button"
+          onClick={() => setShowCalendar(true)}
+          className="w-full bg-[#FFE5EC] hover:bg-[#FFCCD5] text-[#FF0056] py-3 px-4 rounded-lg font-medium mb-4 transition-colors flex items-center justify-center"
+        >
+          <Calendar size={18} className="mr-2" />
+          View Availability Calendar
+        </button>
         
         {/* Error message */}
         {error && (
@@ -155,6 +167,13 @@ export default function PropertyPriceCard({ property, id }) {
           </div>
         </div>
       </div>
+      
+      {/* Availability Calendar Modal */}
+      <AvailabilityCalendar 
+        property={property} 
+        isOpen={showCalendar} 
+        onClose={() => setShowCalendar(false)} 
+      />
     </>
   )
 }

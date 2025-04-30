@@ -1,10 +1,34 @@
-// src/app/api/listings/[id]/route.js
+// src/app/api/listings/[id]/route.js (FIXED)
 import { NextResponse } from 'next/server'
 import { verifyToken, getAuthTokens } from '@/app/lib/auth'
 import supabase from '@/app/services/supabase'
 
+// Cache configuration
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+let cache = {
+  listings: new Map(), // Map of listings by ID
+  timestamps: new Map() // Map of timestamps by ID
+};
+
+// Function to invalidate cache for a specific listing
+export function invalidateListingCache(id) {
+  if (id) {
+    cache.listings.delete(id);
+    cache.timestamps.delete(id);
+  }
+}
+
+// Import the function to invalidate the listings cache
+let invalidateListingsCache;
+try {
+  invalidateListingsCache = require('../route').invalidateListingsCache;
+} catch (error) {
+  invalidateListingsCache = () => {};
+  console.error("Unable to import invalidateListingsCache function:", error);
+}
+
 /**
- * GET a single listing by ID (ANYONE)
+ * GET a single listing by ID (ANYONE) - OPTIMIZED
  * Returns detailed information about the property
  */
 export async function GET(request, { params }) {
@@ -15,7 +39,16 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Listing ID is required' }, { status: 400 })
     }
     
-    // Query for the property with joins for location, images, and availability
+    // Check if we have a valid cached response
+    const cachedTimestamp = cache.timestamps.get(id);
+    if (cachedTimestamp && Date.now() - cachedTimestamp < CACHE_DURATION) {
+      const cachedListing = cache.listings.get(id);
+      if (cachedListing) {
+        return NextResponse.json(cachedListing, { status: 200 });
+      }
+    }
+    
+    // OPTIMIZATION: Single query with all joins
     const { data: property, error: propertyError } = await supabase
       .from('properties')
       .select(`
@@ -23,21 +56,9 @@ export async function GET(request, { params }) {
         host_id, 
         title, 
         description, 
-        propertyavailability(
-          id,
-          start_date,
-          end_date,
-          is_available,
-          price,
-          availability_type
-        ),
         main_image, 
         side_image1, 
         side_image2,
-        propertyimages(
-          id,
-          image_url
-        ),
         minimum_stay,
         number_of_guests, 
         number_of_bedrooms, 
@@ -47,6 +68,18 @@ export async function GET(request, { params }) {
         is_active, 
         created_at, 
         updated_at,
+        propertyavailability(
+          id,
+          start_date,
+          end_date,
+          is_available,
+          price,
+          availability_type
+        ),
+        propertyimages(
+          id,
+          image_url
+        ),
         locations(
           id, 
           address, 
@@ -64,6 +97,14 @@ export async function GET(request, { params }) {
           last_name,
           profile_image,
           created_at
+        ),
+        propertyamenities(
+          amenities(
+            id,
+            name,
+            svg,
+            amenitiescategories(id, name)
+          )
         )
       `)
       .eq('id', id)
@@ -76,68 +117,60 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: `Failed to retrieve property: ${propertyError.message}` }, { status: 500 })
     }
     
-    // Fetch amenities for this property with categories
-    const { data: amenitiesData, error: amenitiesError } = await supabase
-      .from('propertyamenities')
-      .select(`
-        property_id,
-        amenities(
-          id,
-          name,
-          svg,
-          amenitiescategories(id, name)
-        )
-      `)
-      .eq('property_id', id)
+    // OPTIMIZATION: More efficient data processing with better null/undefined handling
     
-    if (amenitiesError) {
-      return NextResponse.json({ error: `Error fetching amenities: ${amenitiesError.message}` }, { status: 500 })
+    // Organize amenities by category
+    const amenities = {};
+    
+    if (property.propertyamenities && property.propertyamenities.length > 0) {
+      property.propertyamenities.forEach(item => {
+        if (!item.amenities) return;
+        
+        const amenity = item.amenities;
+        if (!amenity.amenitiescategories) return;
+        
+        const categoryName = amenity.amenitiescategories.name;
+        if (!categoryName) return;
+        
+        if (!amenities[categoryName]) {
+          amenities[categoryName] = [];
+        }
+        
+        amenities[categoryName].push({
+          name: amenity.name,
+          svg: amenity.svg
+        });
+      });
     }
     
-    // Organize amenities by property and category
-    const amenities = {}
-    
-    amenitiesData?.forEach(item => {
-      const amenity = item.amenities
-      const categoryName = amenity.amenitiescategories.name
-      
-      if (!amenities[categoryName]) {
-        amenities[categoryName] = []
-      }
-      
-      amenities[categoryName].push({
-        name: amenity.name,
-        svg: amenity.svg
-      })
-    })
-    
-    // Format the location object
+    // Format the location object with proper null checks
     const location = {
-      address: property.locations.address || `${property.locations.street}, ${property.locations.city}, ${property.locations.state}`,
-      street: property.locations.street,
-      apt: property.locations.apt || '',
-      city: property.locations.city,
-      state: property.locations.state,
-      zip: property.locations.zip,
-      country: property.locations.country,
-      latitude: property.locations.latitude,
-      longitude: property.locations.longitude
-    }
+      address: property.locations?.address || 
+              `${property.locations?.street || ''}, ${property.locations?.city || ''}, ${property.locations?.state || ''}`.replace(/^, /, '').replace(/, $/, ''),
+      street: property.locations?.street || '',
+      apt: property.locations?.apt || '',
+      city: property.locations?.city || '',
+      state: property.locations?.state || '',
+      zip: property.locations?.zip || '',
+      country: property.locations?.country || '',
+      latitude: property.locations?.latitude || 0,
+      longitude: property.locations?.longitude || 0
+    };
     
-    // Get extra images
-    const extraImages = property.propertyimages.map(img => img.image_url)
+    // Get extra images with null check
+    const extraImages = (property.propertyimages || []).map(img => img.image_url);
     
-    // Process availability data
-    const availability = property.propertyavailability.map(avail => ({
+    // Process availability data with null check
+    const availability = (property.propertyavailability || []).map(avail => ({
       id: avail.id,
       start_date: avail.start_date,
       end_date: avail.end_date,
       is_available: avail.is_available,
       price: avail.price,
       availability_type: avail.availability_type
-    }))
+    }));
     
-    // Return formatted property object
+    // Return formatted property object with host info
     const response = {
       id: property.id,
       host_id: property.host_id,
@@ -159,17 +192,22 @@ export async function GET(request, { params }) {
       is_active: property.is_active,
       created_at: property.created_at,
       updated_at: property.updated_at,
-      host: {
+      host: property.users ? {
         first_name: property.users.first_name,
         last_name: property.users.last_name,
         profile_image: property.users.profile_image,
-        host_since: new Date(property.users.created_at).getFullYear()
-      }
-    }
+        host_since: property.users.created_at ? new Date(property.users.created_at).getFullYear() : null
+      } : null
+    };
     
-    return NextResponse.json(response, { status: 200 })
+    // Cache the result
+    cache.listings.set(id, response);
+    cache.timestamps.set(id, Date.now());
+    
+    return NextResponse.json(response, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('Error in GET /api/listings/[id]:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
@@ -197,167 +235,10 @@ async function deleteImageFromStorage(imageUrl) {
   }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 /**
  * PUT update a listing by ID (OWNER ONLY)
  * Requires authentication and updates property, location, images, availability, and amenities
  * Also properly handles image deletion from storage
- * Example Request Body:
-{
-  "title": "Updated Luxury Beachfront Villa",
-  "description": "UPDATED: Experience paradise in this stunning beachfront villa with panoramic ocean views, private beach access, and newly renovated interiors.",
-  "main_image": "https://placehold.co/1024x1024/png?text=Updated+Main+Image",
-  "side_image1": "https://placehold.co/1024x1024/png?text=Updated+Side+View+1",
-  "side_image2": "https://placehold.co/1024x1024/png?text=Updated+Side+View+2",
-  "extra_images": [
-    "https://placehold.co/1024x1024/png?text=Updated+Pool+Area",
-    "https://placehold.co/1024x1024/png?text=Updated+Master+Bedroom",
-    "https://placehold.co/1024x1024/png?text=New+Kitchen+View",
-    "https://placehold.co/1024x1024/png?text=New+Ocean+View"
-  ],
-  "location": {
-    "address": "125 Ocean Drive, Malibu, CA",
-    "street": "125 Ocean Drive",
-    "apt": "",
-    "city": "Malibu",
-    "state": "CA",
-    "zip": "90265",
-    "country": "USA",
-    "latitude": 34.0261,
-    "longitude": -118.7801
-  },
-  "minimum_stay": 3,
-  "number_of_guests": 10,
-  "number_of_bedrooms": 5,
-  "number_of_beds": 6,
-  "number_of_bathrooms": 5,
-  "additional_info": "UPDATED: House rules: No parties or events. Not suitable for pets. No smoking. Check-in after 3 PM, check-out before 11 AM. Additional cleaning fee applies. Now with new gourmet kitchen and expanded outdoor entertaining area.",
-  "is_active": true,
-  "availability": [
-    {
-      "start_date": "2025-07-01",
-      "end_date": "2025-07-14",
-      "is_available": true,
-      "price": 850.00,
-      "availability_type": "default"
-    },
-    {
-      "start_date": "2025-07-15",
-      "end_date": "2025-07-31",
-      "is_available": true,
-      "price": 950.00,
-      "availability_type": "default"
-    },
-    {
-      "start_date": "2025-08-01",
-      "end_date": "2025-08-14",
-      "is_available": false,
-      "price": 950.00,
-      "availability_type": "blocked"
-    },
-    {
-      "start_date": "2025-08-15",
-      "end_date": "2025-08-31",
-      "is_available": true,
-      "price": 850.00,
-      "availability_type": "default"
-    },
-    {
-      "start_date": "2025-09-01",
-      "end_date": "2025-09-30",
-      "is_available": true,
-      "price": 750.00,
-      "availability_type": "default"
-    }
-  ],
-  "amenities": {
-    "Scenic Views": [
-      {"name": "Beach view"},
-      {"name": "Ocean view"},
-      {"name": "Mountain view"}
-    ],
-    "Bathroom": [
-      {"name": "Hot water"},
-      {"name": "Bathtub"},
-      {"name": "Shower gel"},
-      {"name": "Shampoo"},
-      {"name": "Conditioner"},
-      {"name": "Hair dryer"}
-    ],
-    "Bedroom and laundry": [
-      {"name": "Washer"},
-      {"name": "Dryer"},
-      {"name": "Bed linens"},
-      {"name": "Extra pillows and blankets"},
-      {"name": "Hangers"}
-    ],
-    "Entertainment": [
-      {"name": "TV"},
-      {"name": "Bluetooth sound system"},
-      {"name": "Books and reading material"}
-    ],
-    "Heating and cooling": [
-      {"name": "Air conditioning"},
-      {"name": "Ceiling fan"},
-      {"name": "Central heating"}
-    ],
-    "Home safety": [
-      {"name": "Smoke alarm"},
-      {"name": "Carbon monoxide alarm"},
-      {"name": "Fire extinguisher"},
-      {"name": "First aid kit"}
-    ],
-    "Internet and office": [
-      {"name": "Wifi"},
-      {"name": "Dedicated workspace"}
-    ],
-    "Kitchen and dining": [
-      {"name": "Kitchen"},
-      {"name": "Refrigerator"},
-      {"name": "Dishwasher"},
-      {"name": "Microwave"},
-      {"name": "Coffee maker"},
-      {"name": "Wine glasses"},
-      {"name": "Dining table"},
-      {"name": "Blender"},
-      {"name": "Toaster"}
-    ],
-    "Location features": [
-      {"name": "Beach access - Beachfront"},
-      {"name": "Waterfront"},
-      {"name": "Free resort access"}
-    ],
-    "Outdoor": [
-      {"name": "Outdoor furniture"},
-      {"name": "Outdoor dining area"},
-      {"name": "Patio or balcony"},
-      {"name": "Beach essentials"},
-      {"name": "Private backyard - Fully fenced"}
-    ],
-    "Parking and facilities": [
-      {"name": "Free parking on premises"},
-      {"name": "Pool"},
-      {"name": "Shared hot tub"}
-    ],
-    "Services": [
-      {"name": "Self check-in"},
-      {"name": "Smart lock"},
-      {"name": "Cleaning available during stay"}
-    ]
-  }
-}
  */
 export async function PUT(request, { params }) {
   try {
@@ -374,20 +255,6 @@ export async function PUT(request, { params }) {
     }
 
     const payload = await verifyToken(accessToken)
-
-    /**
-     * @example Payload:
-     * {
-     *   "user_id": "123",
-     *   "first_name": "John",
-     *   "last_name": "Doe",
-     *   "email": "user@example.com",
-     *   "role": "guest",
-     *   "email_verified": false,
-     *   "phone_verified": false,
-     *   "identity_verified": false
-     * }
-     */
     
     if (!payload || !payload.user_id) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
@@ -681,6 +548,12 @@ export async function PUT(request, { params }) {
       }
     }
     
+    // Invalidate this listing's cache and the listings list cache
+    invalidateListingCache(id);
+    if (typeof invalidateListingsCache === 'function') {
+      invalidateListingsCache();
+    }
+    
     return NextResponse.json({
       success: true,
       message: 'Property updated successfully',
@@ -688,20 +561,10 @@ export async function PUT(request, { params }) {
     }, { status: 200 })
     
   } catch (error) {
+    console.error('Error in PUT /api/listings/[id]:', error);
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
-
-
-
-
-
-
-
-
-
-
-
 
 /**
  * DELETE a listing by ID (OWNER ONLY)
@@ -724,20 +587,6 @@ export async function DELETE(request, { params }) {
     }
 
     const payload = await verifyToken(accessToken)
-
-     /**
-     * @example Payload:
-     * {
-     *   "user_id": "123",
-     *   "first_name": "John",
-     *   "last_name": "Doe",
-     *   "email": "user@example.com",
-     *   "role": "guest",
-     *   "email_verified": false,
-     *   "phone_verified": false,
-     *   "identity_verified": false
-     * }
-     */
     
     if (!payload || !payload.user_id) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
@@ -746,7 +595,6 @@ export async function DELETE(request, { params }) {
     if (payload.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
-
     
     // Get the property data including images and check ownership before deleting
     const { data: property, error: propertyError } = await supabase
@@ -848,11 +696,18 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: `Error deleting location: ${locationError.message}` }, { status: 500 })
     }
     
+    // Invalidate this listing's cache and the listings list cache
+    invalidateListingCache(id);
+    if (typeof invalidateListingsCache === 'function') {
+      invalidateListingsCache();
+    }
+    
     return NextResponse.json({
       success: true,
       message: 'Property deleted successfully'
     }, { status: 200 })
   } catch (error) {
+    console.error('Error in DELETE /api/listings/[id]:', error);
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
