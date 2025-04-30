@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import listingService from '@/app/services/api/listingService';
 import ListingCard from "../components/site/ListingCard";
+import { ListingProvider, useListings } from '@/app/stores/listingStore';
 
-export default function HomePage() {
-  const [listings, setListings] = useState([]);
-  const [loading, setLoading] = useState(true);
+// Component that uses the listing data
+function ListingsContent() {
+  const { listings, loading, error } = useListings();
 
   // Function to handle smooth scrolling
   const scrollToSection = (e) => {
@@ -21,22 +21,6 @@ export default function HomePage() {
       });
     }
   };
-
-  // Fetch listings data
-  useEffect(() => {
-    const fetchListings = async () => {
-      try {
-        const data = await listingService.getAllListings();
-        setListings(data);
-      } catch (error) {
-        console.error("Error fetching listings:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchListings();
-  }, []);
 
   return (
     <main className="flex flex-1 flex-col justify-center bg-[#F5F5F5]">
@@ -112,6 +96,14 @@ export default function HomePage() {
             <div className="flex justify-center items-center h-40">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-500"></div>
             </div>
+          ) : error ? (
+            <div className="text-center py-10 bg-white rounded-xl shadow-sm p-8">
+              <svg className="w-16 h-16 mx-auto text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">Error loading properties</h3>
+              <p className="text-gray-600">{error}</p>
+            </div>
           ) : listings.length === 0 ? (
             <div className="text-center py-10 bg-white rounded-xl shadow-sm p-8">
               <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -130,5 +122,14 @@ export default function HomePage() {
         </div>
       </section>
     </main>
+  );
+}
+
+// Wrapper component that provides the listing context
+export default function HomePage() {
+  return (
+    <ListingProvider>
+      <ListingsContent />
+    </ListingProvider>
   );
 }

@@ -2,74 +2,13 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Home, Users, Bed, MapPin, Bath } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useListings } from "@/app/stores/listingStore"
 
 export default function ListingCard({ listing }) {
-  const [priceInfo, setPriceInfo] = useState({ price: 0, nights: 5 })
+  // Get price info from the global store instead of calculating locally
+  const { getListingPriceInfo } = useListings()
+  const priceInfo = getListingPriceInfo(listing?.id)
   
-  useEffect(() => {
-    if (listing?.availability?.length > 0) {
-      calculatePriceForFiveNights()
-    }
-  }, [listing])
-
-  // Calculate price for the next 5 available days
-  const calculatePriceForFiveNights = () => {
-    if (!listing.availability || listing.availability.length === 0) {
-      setPriceInfo({ price: 0, nights: 5 })
-      return
-    }
-
-    // Sort availability by start date
-    const sortedAvailability = [...listing.availability]
-      .filter(range => range.is_available)
-      .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
-
-    // Find availability ranges that are in the future
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    const futureAvailability = sortedAvailability.filter(range => {
-      const endDate = new Date(range.end_date)
-      return endDate >= today
-    })
-
-    if (futureAvailability.length === 0) {
-      setPriceInfo({ price: 0, nights: 5 })
-      return
-    }
-
-    // Calculate the price for the next 5 available days
-    let totalPrice = 0
-    let remainingNights = 5
-    let nightsCalculated = 0
-
-    for (const range of futureAvailability) {
-      if (remainingNights <= 0) break
-
-      const startDate = new Date(range.start_date)
-      const endDate = new Date(range.end_date)
-      
-      // Adjust start date if it's in the past
-      const effectiveStartDate = startDate < today ? today : startDate
-      
-      // Calculate number of nights in this range
-      const daysInRange = Math.floor((endDate - effectiveStartDate) / (1000 * 60 * 60 * 24)) + 1
-      const nightsToUse = Math.min(daysInRange, remainingNights)
-      
-      // Add to total price
-      totalPrice += range.price * nightsToUse
-      remainingNights -= nightsToUse
-      nightsCalculated += nightsToUse
-    }
-
-    // If we couldn't find 5 nights, use what we found
-    setPriceInfo({ 
-      price: totalPrice,
-      nights: nightsCalculated
-    })
-  }
-
   if (!listing) {
     return (
       <div className="bg-white rounded-xl shadow-md p-4">
@@ -85,10 +24,7 @@ export default function ListingCard({ listing }) {
 
   // Format price display
   const formatPrice = () => {
-    const currency = "USD"
-    const currencySymbol = "$"
-    
-    return `${currencySymbol}${priceInfo.price.toLocaleString(undefined, {
+    return priceInfo.formattedPrice || `$${priceInfo.price.toLocaleString(undefined, {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     })}`
