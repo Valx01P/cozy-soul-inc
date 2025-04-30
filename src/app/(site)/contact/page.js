@@ -9,10 +9,10 @@ export default function Contact() {
     phone: '',
     message: ''
   })
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formStatus, setFormStatus] = useState(null)
-  
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({
@@ -20,11 +20,10 @@ export default function Contact() {
       [name]: value
     }))
   }
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
-    // Form validation
+
     if (!formData.name || !formData.email || !formData.message) {
       setFormStatus({
         success: false,
@@ -32,9 +31,9 @@ export default function Contact() {
       })
       return
     }
-    
+
     setIsSubmitting(true)
-    
+
     try {
       const response = await fetch('/api/email', {
         method: 'POST',
@@ -43,15 +42,14 @@ export default function Contact() {
         },
         body: JSON.stringify(formData)
       })
-      
+
       const data = await response.json()
-      
+
       if (response.ok) {
         setFormStatus({
           success: true,
           message: 'Message sent successfully! We will get back to you soon.'
         })
-        // Reset form after successful submission
         setFormData({
           name: '',
           email: '',
@@ -75,81 +73,74 @@ export default function Contact() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12 md:py-20">
-      <div className="mb-10 text-center">
-        <h1 className="text-3xl md:text-4xl font-bold mb-4">Contact Us</h1>
-        <p className="text-gray-600 max-w-2xl mx-auto">
-          Have questions about our properties or services? Feel free to get in touch with us and we'll get back to you as soon as possible.
-        </p>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+    <div className="max-w-7xl mx-auto px-4 py-12">
+      <h1 className="text-3xl md:text-4xl font-bold text-center mb-6">Contact Us</h1>
+      <p className="text-center text-gray-600 max-w-2xl mx-auto mb-12">
+        Have questions about our properties or services? Feel free to reach out and we’ll respond as soon as possible.
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Contact Information */}
-        <div className="bg-white rounded-xl shadow-sm p-8">
-          <h2 className="text-2xl font-semibold mb-6">Get in Touch</h2>
-          
-          <div className="space-y-6">
-            <div className="flex items-start">
-              <div className="bg-[var(--primary-red)] p-3 rounded-full text-white mr-4">
-                <MapPin size={20} />
-              </div>
-              <div>
-                <h3 className="font-medium text-gray-900">Our Location</h3>
-                <p className="text-gray-600 mt-1">123 Main Street, Miami, FL 33101</p>
-              </div>
+        <div className="bg-white rounded-xl shadow-sm p-6 space-y-6">
+          <h2 className="text-2xl font-semibold">Get in Touch</h2>
+
+          <div className="flex items-start">
+            <div className="bg-[var(--primary-red)] p-3 rounded-full text-white mr-4">
+              <MapPin size={20} />
             </div>
-            
-            <div className="flex items-start">
-              <div className="bg-[var(--primary-red)] p-3 rounded-full text-white mr-4">
-                <Mail size={20} />
-              </div>
-              <div>
-                <h3 className="font-medium text-gray-900">Email Us</h3>
-                <p className="text-gray-600 mt-1">info@cozysoul.com</p>
-              </div>
-            </div>
-            
-            <div className="flex items-start">
-              <div className="bg-[var(--primary-red)] p-3 rounded-full text-white mr-4">
-                <Phone size={20} />
-              </div>
-              <div>
-                <h3 className="font-medium text-gray-900">Call Us</h3>
-                <p className="text-gray-600 mt-1">(305) 555-1234</p>
-              </div>
+            <div>
+              <h3 className="font-medium text-gray-900">Our Location</h3>
+              <p className="text-gray-600 mt-1">123 Main Street, Miami, FL 33101</p>
             </div>
           </div>
-          
-          <div className="mt-10">
-            <h3 className="text-lg font-medium mb-4">Office Hours</h3>
-            <div className="space-y-2 text-gray-600">
+
+          <div className="flex items-start">
+            <div className="bg-[var(--primary-red)] p-3 rounded-full text-white mr-4">
+              <Mail size={20} />
+            </div>
+            <div>
+              <h3 className="font-medium text-gray-900">Email Us</h3>
+              <p className="text-gray-600 mt-1">info@cozysoul.com</p>
+            </div>
+          </div>
+
+          <div className="flex items-start">
+            <div className="bg-[var(--primary-red)] p-3 rounded-full text-white mr-4">
+              <Phone size={20} />
+            </div>
+            <div>
+              <h3 className="font-medium text-gray-900">Call Us</h3>
+              <p className="text-gray-600 mt-1">(305) 555-1234</p>
+            </div>
+          </div>
+
+          <div className="border-t pt-6 mt-6">
+            <h3 className="text-lg font-medium mb-3">Office Hours</h3>
+            <div className="space-y-1 text-gray-600 text-sm">
               <p className="flex justify-between">
-                <span>Monday - Friday:</span>
-                <span>9:00 AM - 6:00 PM</span>
+                <span>Monday - Friday:</span> <span>9:00 AM - 6:00 PM</span>
               </p>
               <p className="flex justify-between">
-                <span>Saturday:</span>
-                <span>10:00 AM - 4:00 PM</span>
+                <span>Saturday:</span> <span>10:00 AM - 4:00 PM</span>
               </p>
               <p className="flex justify-between">
-                <span>Sunday:</span>
-                <span>Closed</span>
+                <span>Sunday:</span> <span>Closed</span>
               </p>
             </div>
           </div>
         </div>
-        
+
         {/* Contact Form */}
-        <div className="bg-white rounded-xl shadow-sm p-8">
-          <h2 className="text-2xl font-semibold mb-6">Send Us a Message</h2>
-          
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="text-xl font-semibold mb-6">Send a Message</h2>
+
           {formStatus && (
             <div className={`mb-6 p-4 rounded-lg ${formStatus.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
               {formStatus.message}
             </div>
           )}
-          
-          <form onSubmit={handleSubmit} className="space-y-6">
+
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                 Your Name <span className="text-[var(--primary-red)]">*</span>
@@ -164,7 +155,7 @@ export default function Contact() {
                 required
               />
             </div>
-            
+
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email Address <span className="text-[var(--primary-red)]">*</span>
@@ -179,7 +170,7 @@ export default function Contact() {
                 required
               />
             </div>
-            
+
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
                 Phone Number (Optional)
@@ -193,7 +184,7 @@ export default function Contact() {
                 className="block w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-[var(--primary-red)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-red)]"
               />
             </div>
-            
+
             <div>
               <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
                 Your Message <span className="text-[var(--primary-red)]">*</span>
@@ -208,7 +199,7 @@ export default function Contact() {
                 required
               ></textarea>
             </div>
-            
+
             <button
               type="submit"
               disabled={isSubmitting}
@@ -226,6 +217,10 @@ export default function Contact() {
                 </>
               )}
             </button>
+
+            <p className="text-gray-500 text-sm mt-4 text-center">
+              By contacting us, you agree to our terms and privacy policy. We’ll never share your personal information.
+            </p>
           </form>
         </div>
       </div>
