@@ -80,9 +80,9 @@ function ListingsContent() {
         </div>
       </section>
       
-      {/* Listings Section */}
+      {/* Listings Section - Increased width by using max-w-7xl instead of max-w-6xl */}
       <section id="listings" className="container mx-auto px-4 py-12">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-[80rem] mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
             Discover Our <span className="text-red-500">Premium Properties</span>
           </h2>
