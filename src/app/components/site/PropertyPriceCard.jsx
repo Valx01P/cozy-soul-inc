@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from "next/link"
 import Image from "next/image"
-import { MessageCircle, MapPin, Users, Home, Calendar, XCircle } from "lucide-react"
+import { MessageCircle, MapPin, Users, Home, Calendar, XCircle, CreditCard, Info, Moon } from "lucide-react"
 import useAuthStore from '@/app/stores/authStore'
 import { useRouter } from 'next/navigation'
 import AvailabilityCalendar from './AvailabilityCalendar'
@@ -124,7 +124,35 @@ const getBaseNightRate = (property) => {
   }
 }
 
-export default function UpdatedPropertyPriceCard({ property, id }) {
+// Calculate additional fees based on stay details
+const calculateAdditionalFees = (property, nights) => {
+  if (!property?.additional_fees || property.additional_fees.length === 0) {
+    return { fees: [], totalFees: 0 };
+  }
+
+  const calculatedFees = property.additional_fees.map(fee => {
+    let totalFeeAmount = 0;
+    
+    // Calculate fee based on type
+    if (fee.type === 'flat') {
+      totalFeeAmount = parseFloat(fee.cost);
+    } else if (fee.type === 'per_night') {
+      totalFeeAmount = parseFloat(fee.cost) * nights;
+    }
+    
+    return {
+      ...fee,
+      calculatedAmount: totalFeeAmount
+    };
+  });
+
+  // Calculate the total of all fees
+  const totalFees = calculatedFees.reduce((sum, fee) => sum + fee.calculatedAmount, 0);
+  
+  return { fees: calculatedFees, totalFees };
+}
+
+export default function PropertyPriceCard({ property, id }) {
   const { isAuthenticated, user } = useAuthStore()
   const [error, setError] = useState('')
   const router = useRouter()
@@ -134,6 +162,9 @@ export default function UpdatedPropertyPriceCard({ property, id }) {
   // Date selection state
   const [checkInDate, setCheckInDate] = useState(null)
   const [checkOutDate, setCheckOutDate] = useState(null)
+  
+  // Fee tooltip state
+  const [showFeeInfo, setShowFeeInfo] = useState(false)
   
   // Get base night rate for display
   const baseRateInfo = useMemo(() => {
@@ -210,12 +241,18 @@ export default function UpdatedPropertyPriceCard({ property, id }) {
       currentDate = addDays(currentDate, 1)
     }
     
+    // Calculate additional fees for this stay
+    const { fees, totalFees } = calculateAdditionalFees(property, nights);
+    
     return {
       isDefault: false,
       isValid: datesValid,
       nights,
       totalPrice: datesValid ? totalPrice : 0,
-      perNight: datesValid && nights > 0 ? Math.round(totalPrice / nights) : 0
+      perNight: datesValid && nights > 0 ? Math.round(totalPrice / nights) : 0,
+      additionalFees: fees,
+      totalAdditionalFees: totalFees,
+      grandTotal: datesValid ? totalPrice + totalFees : 0
     }
   }, [checkInDate, checkOutDate, property, defaultPriceInfo])
   
@@ -294,6 +331,11 @@ export default function UpdatedPropertyPriceCard({ property, id }) {
     return baseRateInfo
   }, [stayDetails, defaultPriceInfo, baseRateInfo])
 
+  // Toggle fee info tooltip
+  const toggleFeeInfo = () => {
+    setShowFeeInfo(!showFeeInfo);
+  }
+
   return (
     <>
       <div className="bg-white rounded-xl shadow-sm p-6 sticky top-24">
@@ -365,23 +407,68 @@ export default function UpdatedPropertyPriceCard({ property, id }) {
                     </div>
                   ) : (
                     // Selected date range calculation
-                    <div className="flex justify-between items-center mb-2">
-                      <div className="text-sm text-gray-700">
-                        {stayDetails.nights > 10 ? (
-                          // Show average per night for longer stays
-                          `${stayDetails.nights} nights (avg. $${formatPrice(stayDetails.perNight)}/night)`
-                        ) : (
-                          `$${formatPrice(stayDetails.perNight)} x ${stayDetails.nights} nights`
-                        )}
+                    <>
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="text-sm text-gray-700">
+                          {stayDetails.nights > 10 ? (
+                            // Show average per night for longer stays
+                            `${stayDetails.nights} nights (avg. $${formatPrice(stayDetails.perNight)}/night)`
+                          ) : (
+                            `$${formatPrice(stayDetails.perNight)} x ${stayDetails.nights} nights`
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-700">
+                          ${formatPrice(stayDetails.totalPrice)}
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-700">
-                        ${formatPrice(stayDetails.totalPrice)}
-                      </div>
-                    </div>
+                      
+                      {/* Show additional fees if they exist and stay is valid */}
+                      {property.additional_fees && property.additional_fees.length > 0 && stayDetails.additionalFees && (
+                        <div className="mt-2 border-t border-green-100 pt-2">
+                          <div className="flex justify-between items-center mb-1">
+                            <div className="text-sm text-gray-700 flex items-center">
+                              <span>Additional fees</span>
+                              <button 
+                                onClick={toggleFeeInfo}
+                                className="ml-1 p-1 rounded-full hover:bg-green-100 transition-colors"
+                                aria-label="Show fee details"
+                              >
+                                <Info size={14} className="text-gray-500" />
+                              </button>
+                            </div>
+                            <div className="text-sm text-gray-700">
+                              ${formatPrice(stayDetails.totalAdditionalFees)}
+                            </div>
+                          </div>
+                          
+                          {/* Fee breakdown tooltip */}
+                          {showFeeInfo && (
+                            <div className="bg-white rounded-md shadow-sm p-2 mt-1 mb-2 text-xs border border-gray-200">
+                              {stayDetails.additionalFees.map((fee, index) => (
+                                <div key={fee.id} className="flex justify-between items-center py-1">
+                                  <div className="text-gray-700">
+                                    {fee.title}
+                                    <span className="text-gray-500 ml-1">
+                                      ({fee.type === 'flat' ? 'one-time' : `$${fee.cost} x ${stayDetails.nights} nights`})
+                                    </span>
+                                  </div>
+                                  <div className="font-medium">${formatPrice(fee.calculatedAmount)}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
+                  
                   <div className="flex justify-between items-center font-bold pt-2 border-t border-green-100">
-                    <div>{stayDetails.isDefault ? "5-Night Total" : "Est. Cost"}</div>
-                    <div>${formatPrice(stayDetails.totalPrice)}</div>
+                    <div>{stayDetails.isDefault ? "5-Night Total" : "Est. Total"}</div>
+                    <div>
+                      ${formatPrice(stayDetails.isDefault 
+                        ? stayDetails.totalPrice 
+                        : stayDetails.grandTotal || stayDetails.totalPrice)}
+                    </div>
                   </div>
                 </div>
               )}
@@ -432,6 +519,20 @@ export default function UpdatedPropertyPriceCard({ property, id }) {
               <Home size={16} className="text-[var(--primary-red)] mr-2 mt-1" />
               <span className="text-gray-700">{property.number_of_bedrooms} bedroom{property.number_of_bedrooms !== 1 ? 's' : ''} with {property.number_of_beds} bed{property.number_of_beds !== 1 ? 's' : ''}</span>
             </li>
+            {property.minimum_stay > 1 && (
+              <li className="flex items-start">
+                <Moon size={16} className="text-[var(--primary-red)] mr-2 mt-1" />
+                <span className="text-gray-700">Minimum stay: {property.minimum_stay} nights</span>
+              </li>
+            )}
+            {property.additional_fees && property.additional_fees.length > 0 && (
+              <li className="flex items-start">
+                <CreditCard size={16} className="text-[var(--primary-red)] mr-2 mt-1" />
+                <span className="text-gray-700">
+                  Includes {property.additional_fees.length} additional fee{property.additional_fees.length !== 1 ? 's' : ''}
+                </span>
+              </li>
+            )}
           </ul>
         </div>
         

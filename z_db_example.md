@@ -95,6 +95,18 @@ CREATE TABLE properties (
   FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE
 );
 
+CREATE TABLE additionalfees (
+  id SERIAL PRIMARY KEY,
+  property_id INTEGER NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  cost DECIMAL(10, 2) NOT NULL,
+  type VARCHAR(50) NOT NULL DEFAULT 'flat', -- 'flat' or 'per_night'
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
+);
+
 -- Table for property images
 CREATE TABLE propertyimages (
   id SERIAL PRIMARY KEY,
@@ -318,6 +330,7 @@ DROP TABLE IF EXISTS propertyavailability CASCADE;
 DROP TABLE IF EXISTS propertyamenities CASCADE;
 DROP TABLE IF EXISTS propertyimages CASCADE;
 DROP TABLE IF EXISTS properties CASCADE;
+DROP TABLE IF EXISTS additionalfees CASCADE;
 DROP TABLE IF EXISTS amenities CASCADE;
 DROP TABLE IF EXISTS locations CASCADE;
 DROP TABLE IF EXISTS amenitiescategories CASCADE;

@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { ChevronLeft, Home, Users, Bed, Bath, MapPin, MessageCircle, Camera, ChevronRight, ImageIcon } from "lucide-react"
+import { ChevronLeft, Home, Users, Bed, Bath, MapPin, MessageCircle, Camera, ChevronRight, ImageIcon, Moon, CreditCard } from "lucide-react"
 import { use } from "react"
 import listingService from "@/app/services/api/listingService"
 import PropertyPriceCard from "../../../components/site/PropertyPriceCard"
@@ -67,6 +67,37 @@ function PropertyDescription({ description, maxLines = 5 }) {
   );
 }
 
+// Component to display additional fees
+function AdditionalFees({ fees }) {
+  if (!fees || fees.length === 0) return null;
+  
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+      <h2 className="text-xl font-semibold mb-4">Additional Fees</h2>
+      <div className="divide-y divide-gray-100">
+        {fees.map(fee => (
+          <div key={fee.id} className="py-3 first:pt-0 last:pb-0">
+            <div className="flex justify-between mb-1">
+              <div className="font-medium text-gray-900 flex items-center">
+                <CreditCard size={16} className="text-[var(--primary-red)] mr-2" />
+                {fee.title}
+              </div>
+              <div className="font-medium text-gray-900">
+                ${parseFloat(fee.cost).toFixed(2)}
+                <span className="text-sm text-gray-500 ml-1">
+                  {fee.type === 'per_night' ? '/ night' : ''}
+                </span>
+              </div>
+            </div>
+            {fee.description && (
+              <p className="text-sm text-gray-600 mt-1">{fee.description}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function PropertyPage({ params }) {
   const resolvedParams = use(params)
@@ -588,6 +619,15 @@ export default function PropertyPage({ params }) {
                     <p className="font-medium">Up to {property.number_of_guests} guest{property.number_of_guests !== 1 ? 's' : ''}</p>
                   </div>
                 </div>
+                
+                {property.minimum_stay > 1 && (
+                  <div className="flex items-center">
+                    <Moon size={20} className="mr-2 text-gray-700" />
+                    <div>
+                      <p className="font-medium">Minimum stay: {property.minimum_stay} night{property.minimum_stay !== 1 ? 's' : ''}</p>
+                    </div>
+                  </div>
+                )}
               </div>
               
               {property.additional_info && (
@@ -597,6 +637,11 @@ export default function PropertyPage({ params }) {
                 </div>
               )}
             </div>
+            
+            {/* Additional Fees Section - NEW! */}
+            {property.additional_fees && property.additional_fees.length > 0 && (
+              <AdditionalFees fees={property.additional_fees} />
+            )}
             
             {/* Amenities */}
             <div className="bg-white rounded-xl shadow-sm p-6 mb-8">

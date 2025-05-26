@@ -1,4 +1,4 @@
-// src/app/api/listings/[id]/route.js (FIXED)
+// src/app/api/listings/[id]/route.js - Updated for Additional Fees
 import { NextResponse } from 'next/server'
 import { verifyToken, getAuthTokens } from '@/app/lib/auth'
 import supabase from '@/app/services/supabase'
@@ -117,6 +117,17 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: `Failed to retrieve property: ${propertyError.message}` }, { status: 500 })
     }
     
+    // Fetch additional fees
+    const { data: additionalFees, error: feesError } = await supabase
+      .from('additionalfees')
+      .select('id, title, description, cost, type')
+      .eq('property_id', id)
+    
+    if (feesError) {
+      console.error('Error fetching additional fees:', feesError);
+      // Continue without fees rather than failing the entire request
+    }
+    
     // OPTIMIZATION: More efficient data processing with better null/undefined handling
     
     // Organize amenities by category
@@ -177,6 +188,7 @@ export async function GET(request, { params }) {
       title: property.title,
       description: property.description,
       availability,
+      additional_fees: additionalFees || [],
       main_image: property.main_image,
       side_image1: property.side_image1,
       side_image2: property.side_image2,
@@ -451,7 +463,39 @@ export async function PUT(request, { params }) {
       }
     }
     
-    // 6. Handle amenities if provided - delete existing and add new ones
+    // 6. Handle additional fees if provided
+    if (data.additional_fees && Array.isArray(data.additional_fees)) {
+      // Delete existing fees
+      const { error: deleteFeesError } = await supabase
+        .from('additionalfees')
+        .delete()
+        .eq('property_id', id)
+      
+      if (deleteFeesError) {
+        return NextResponse.json({ error: `Error deleting existing fees: ${deleteFeesError.message}` }, { status: 500 })
+      }
+      
+      // Insert new fees if there are any
+      if (data.additional_fees.length > 0) {
+        const feesData = data.additional_fees.map(fee => ({
+          property_id: id,
+          title: fee.title,
+          description: fee.description || '',
+          cost: fee.cost,
+          type: fee.type || 'flat'
+        }))
+        
+        const { error: feesError } = await supabase
+          .from('additionalfees')
+          .insert(feesData)
+        
+        if (feesError) {
+          return NextResponse.json({ error: `Error adding additional fees: ${feesError.message}` }, { status: 500 })
+        }
+      }
+    }
+    
+    // 7. Handle amenities if provided - delete existing and add new ones
     if (data.amenities && typeof data.amenities === 'object') {
       // Delete existing amenities
       const { error: deleteAmenitiesError } = await supabase
@@ -656,7 +700,17 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: `Error deleting property availability: ${availabilityError.message}` }, { status: 500 })
     }
     
-    // 2. Delete propertyamenities (junction table)
+    // 2. Delete additionalfees
+    const { error: feesError } = await supabase
+      .from('additionalfees')
+      .delete()
+      .eq('property_id', id)
+    
+    if (feesError) {
+      return NextResponse.json({ error: `Error deleting additional fees: ${feesError.message}` }, { status: 500 })
+    }
+    
+    // 3. Delete propertyamenities (junction table)
     const { error: amenitiesError } = await supabase
       .from('propertyamenities')
       .delete()
@@ -666,7 +720,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: `Error deleting property amenities: ${amenitiesError.message}` }, { status: 500 })
     }
     
-    // 3. Delete propertyimages
+    // 4. Delete propertyimages
     const { error: deleteImagesError } = await supabase
       .from('propertyimages')
       .delete()
@@ -676,7 +730,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: `Error deleting property images: ${deleteImagesError.message}` }, { status: 500 })
     }
     
-    // 4. Delete the property
+    // 5. Delete the property
     const { error: deletePropertyError } = await supabase
       .from('properties')
       .delete()
@@ -686,7 +740,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: `Error deleting property: ${deletePropertyError.message}` }, { status: 500 })
     }
     
-    // 5. Delete the location
+    // 6. Delete the location
     const { error: locationError } = await supabase
       .from('locations')
       .delete()

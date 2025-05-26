@@ -1,4 +1,4 @@
-// src/app/stores/propertyFormStore.js - Fixed Edit Mode Image Handling
+// src/app/stores/propertyFormStore.js - Updated with Additional Fees
 import { create } from 'zustand'
 import { toast } from 'react-hot-toast'
 import { format, parseISO, isValid } from 'date-fns'
@@ -33,6 +33,9 @@ const usePropertyFormStore = create((set, get) => ({
   // Pricing and availability data
   priceRanges: [], // Stores 'yyyy-MM-dd' strings for startDate and endDate (inclusive)
   minimum_stay: 1, // Minimum stay field, default to 1 night
+  
+  // Additional fees data
+  additionalFees: [], // Array of fee objects
 
   // Location form data
   location: {
@@ -129,7 +132,17 @@ const usePropertyFormStore = create((set, get) => ({
         availability_type: avail.availability_type
     }));
 
+    // Initialize additional fees from property data
+    const additionalFeesData = (propertyData.additional_fees || []).map((fee) => ({
+        id: fee.id,
+        title: fee.title,
+        description: fee.description || '',
+        cost: fee.cost,
+        type: fee.type || 'flat'
+    }));
+
     console.log("Formatted priceRanges for edit mode:", priceRangesData);
+    console.log("Formatted additionalFees for edit mode:", additionalFeesData);
 
     // Set all form fields from property data
     return {
@@ -143,6 +156,7 @@ const usePropertyFormStore = create((set, get) => ({
       side_image2_url: propertyData.side_image2 || "",
       extra_image_urls: Array.isArray(propertyData.extra_images) ? [...propertyData.extra_images] : [],
       priceRanges: priceRangesData,
+      additionalFees: additionalFeesData,
       minimum_stay: propertyData.minimum_stay || 1,
       deleted_image_urls: [],
       location: {
@@ -200,6 +214,7 @@ const usePropertyFormStore = create((set, get) => ({
       side_image2_url: "",
       extra_image_urls: [],
       priceRanges: [],
+      additionalFees: [],
       minimum_stay: 1,
       deleted_image_urls: [],
       location: {
@@ -310,6 +325,35 @@ const usePropertyFormStore = create((set, get) => ({
   updateMinimumStay: (value) => set((state) => {
     const intValue = parseInt(value);
     return { ...state, minimum_stay: isNaN(intValue) || intValue < 1 ? 1 : intValue };
+  }),
+
+  /**
+   * Add a new additional fee
+   */
+  addAdditionalFee: (fee) => set((state) => {
+    console.log("Adding additional fee to store:", fee);
+    return { ...state, additionalFees: [...state.additionalFees, fee] };
+  }),
+
+  /**
+   * Update an existing additional fee
+   */
+  updateAdditionalFee: (updatedFee) => set((state) => {
+    console.log("Updating additional fee in store:", updatedFee);
+    return { 
+      ...state, 
+      additionalFees: state.additionalFees.map(fee => 
+        fee.id === updatedFee.id ? updatedFee : fee
+      ) 
+    };
+  }),
+
+  /**
+   * Delete an additional fee by ID
+   */
+  deleteAdditionalFee: (feeId) => set((state) => {
+    console.log("Deleting additional fee from store, ID:", feeId);
+    return { ...state, additionalFees: state.additionalFees.filter(fee => fee.id !== feeId) };
   }),
 
   /**
@@ -601,6 +645,16 @@ const usePropertyFormStore = create((set, get) => ({
     }));
     console.log("Formatted availability for API:", availabilityData);
 
+    // Format additional fees data
+    const additionalFeesData = state.additionalFees.map(fee => ({
+      id: fee.id,
+      title: fee.title,
+      description: fee.description || '',
+      cost: parseFloat(fee.cost),
+      type: fee.type || 'flat'
+    }));
+    console.log("Formatted additional fees for API:", additionalFeesData);
+
     // Create the final property data payload
     const propertyData = {
       title: state.title,
@@ -610,6 +664,7 @@ const usePropertyFormStore = create((set, get) => ({
       side_image2: state.side_image2_url || null,
       extra_images: state.extra_image_urls || [],
       availability: availabilityData,
+      additional_fees: additionalFeesData,
       location: {
         address: state.location.address || `${state.location.street || ''}, ${state.location.city || ''}, ${state.location.state || ''} ${state.location.zip || ''}`.trim().replace(/, $/, ''),
         street: state.location.street || "",
@@ -734,6 +789,7 @@ const usePropertyFormStore = create((set, get) => ({
       side_image2_url: "",
       extra_image_urls: [],
       priceRanges: [],
+      additionalFees: [],
       minimum_stay: 1,
       deleted_image_urls: [],
       location: {

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from "react"
 import { format, parseISO, isValid } from "date-fns"
-import { DollarSign, Moon } from "lucide-react"
+import { DollarSign, Moon, CreditCard } from "lucide-react"
 import usePropertyFormStore from "@/app/stores/propertyFormStore"
 
 // Reusable component for formatting descriptions with paragraphs
@@ -44,7 +44,8 @@ export function ConfirmSubmitStep() {
     additional_info,
     amenities,
     imagePreviews,
-    minimum_stay
+    minimum_stay,
+    additionalFees
   } = usePropertyFormStore((state) => state)
 
   // Sort price ranges by start date so they're always chronological
@@ -228,6 +229,46 @@ export function ConfirmSubmitStep() {
             </div>
           ) : (
             <p className="text-gray-500">No pricing information provided.</p>
+          )}
+          
+          {/* Additional Fees Section */}
+          {additionalFees && additionalFees.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h4 className="text-base font-medium mb-3">Additional Fees</h4>
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left text-sm font-medium text-gray-500 py-2">Fee Name</th>
+                      <th className="text-left text-sm font-medium text-gray-500 py-2">Type</th>
+                      <th className="text-left text-sm font-medium text-gray-500 py-2">Amount</th>
+                      <th className="text-left text-sm font-medium text-gray-500 py-2">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {additionalFees.map((fee) => (
+                      <tr key={fee.id} className="border-b border-gray-100">
+                        <td className="py-3 text-sm font-medium">
+                          {fee.title}
+                        </td>
+                        <td className="py-3 text-sm">
+                          {fee.type === 'flat' ? 'One-time fee' : 'Per night'}
+                        </td>
+                        <td className="py-3 text-sm">
+                          <span className="flex items-center">
+                            <DollarSign size={14} className="mr-1" />
+                            {fee.cost}
+                          </span>
+                        </td>
+                        <td className="py-3 text-sm text-gray-500 max-w-xs">
+                          {fee.description || <span className="text-gray-400 italic">No description</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </div>
       </div>

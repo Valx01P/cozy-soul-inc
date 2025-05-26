@@ -1,4 +1,4 @@
-// src/app/api/listings/route.js (FIXED)
+// src/app/api/listings/route.js - Updated for Additional Fees
 import { NextResponse } from 'next/server'
 import { verifyToken, getAuthTokens } from '@/app/lib/auth'
 import supabase from '@/app/services/supabase'
@@ -118,6 +118,24 @@ export async function GET(request) {
       return NextResponse.json({ error: `Failed to retrieve properties: ${propertyError.message}` }, { status: 500 });
     }
     
+    // Fetch additional fees for all properties
+    const propertyIds = properties.map(p => p.id);
+    let additionalFees = [];
+    
+    if (propertyIds.length > 0) {
+      const { data: fees, error: feesError } = await supabase
+        .from('additionalfees')
+        .select('id, property_id, title, description, cost, type')
+        .in('property_id', propertyIds);
+      
+      if (!feesError) {
+        additionalFees = fees || [];
+      } else {
+        console.error('Error fetching additional fees:', feesError);
+        // Continue without fees rather than failing the entire request
+      }
+    }
+    
     // Process data more efficiently
     const response = properties.map(property => {
       // Format location
@@ -151,6 +169,9 @@ export async function GET(request) {
           }))
         : [];
       
+      // Get additional fees for this property
+      const propertyFees = additionalFees.filter(fee => fee.property_id === property.id);
+      
       // Organize amenities efficiently
       const amenities = {};
       
@@ -182,6 +203,7 @@ export async function GET(request) {
         title: property.title,
         description: property.description,
         availability,
+        additional_fees: propertyFees,
         main_image: property.main_image,
         side_image1: property.side_image1,
         side_image2: property.side_image2,
@@ -356,7 +378,26 @@ export async function POST(request) {
       }
     }
     
-    // 5. Add amenities if provided
+    // 5. Add additional fees if provided
+    if (data.additional_fees && Array.isArray(data.additional_fees) && data.additional_fees.length > 0) {
+      const feesData = data.additional_fees.map(fee => ({
+        property_id: propertyId,
+        title: fee.title,
+        description: fee.description || '',
+        cost: fee.cost,
+        type: fee.type || 'flat'
+      }))
+      
+      const { error: feesError } = await supabase
+        .from('additionalfees')
+        .insert(feesData)
+      
+      if (feesError) {
+        return NextResponse.json({ error: `Error adding additional fees: ${feesError.message}` }, { status: 500 })
+      }
+    }
+    
+    // 6. Add amenities if provided
     if (data.amenities && typeof data.amenities === 'object') {
       // First, fetch all categories to get the category IDs
       const { data: categories, error: categoriesError } = await supabase
@@ -443,7 +484,7 @@ export async function POST(request) {
       }
     }
     
-    // 6. Fetch the created property with all its relations to return
+    // 7. Fetch the created property with all its relations to return
     const { data: createdProperty, error: fetchError } = await supabase
       .from('properties')
       .select(`
@@ -498,6 +539,12 @@ export async function POST(request) {
         property_id: propertyId
       })
     }
+    
+    // Get additional fees for this property
+    const { data: additionalFees, error: feesError } = await supabase
+      .from('additionalfees')
+      .select('id, title, description, cost, type')
+      .eq('property_id', propertyId)
     
     // Format the response
     const propertyLocation = {
@@ -572,6 +619,7 @@ export async function POST(request) {
       title: createdProperty.title,
       description: createdProperty.description,
       availability,
+      additional_fees: additionalFees || [],
       main_image: createdProperty.main_image,
       side_image1: createdProperty.side_image1,
       side_image2: createdProperty.side_image2,

@@ -24,7 +24,10 @@ import {
   ArrowRight,
   Trash,
   Edit,
-  Moon // Using Moon icon for nights
+  Moon, // Using Moon icon for nights
+  Plus,
+  Tag,
+  Clipboard
 } from 'lucide-react';
 import usePropertyFormStore from "@/app/stores/propertyFormStore";
 
@@ -47,7 +50,11 @@ export function PricingFormStep() {
     addPriceRange,
     deletePriceRange,
     minimum_stay, // Get minimum_stay state
-    updateMinimumStay // Get update action for minimum_stay
+    updateMinimumStay, // Get update action for minimum_stay
+    additionalFees, // Get additional fees state
+    addAdditionalFee, // Add a new fee
+    updateAdditionalFee, // Update an existing fee
+    deleteAdditionalFee // Delete a fee
   } = usePropertyFormStore(state => state);
 
   // Calendar view state
@@ -61,6 +68,14 @@ export function PricingFormStep() {
 
   // Editing state
   const [editingRangeId, setEditingRangeId] = useState(null); // ID of the range being edited
+
+  // Additional fees form state
+  const [showFeeForm, setShowFeeForm] = useState(false);
+  const [editingFeeId, setEditingFeeId] = useState(null);
+  const [feeTitle, setFeeTitle] = useState('');
+  const [feeDescription, setFeeDescription] = useState('');
+  const [feeCost, setFeeCost] = useState('');
+  const [feeType, setFeeType] = useState('flat'); // 'flat' or 'per_night'
 
   // Message states
   const [errorMessage, setErrorMessage] = useState(null);
@@ -514,39 +529,82 @@ export function PricingFormStep() {
 
   // Sort price ranges by start date for display
   const sortedPriceRanges = useMemo(() => {
-    return [...parsedPriceRanges].sort((a, b) => a.startDate - b.startDate);
+    return [...(parsedPriceRanges || [])].sort((a, b) => a.startDate - b.startDate);
   }, [parsedPriceRanges]);
+
+  // Handle showing the fee form
+  const handleAddFee = () => {
+    setEditingFeeId(null);
+    setFeeTitle('');
+    setFeeDescription('');
+    setFeeCost('');
+    setFeeType('flat');
+    setShowFeeForm(true);
+  };
+
+  // Handle editing a fee
+  const handleEditFee = (fee) => {
+    setEditingFeeId(fee.id);
+    setFeeTitle(fee.title);
+    setFeeDescription(fee.description || '');
+    setFeeCost(fee.cost.toString());
+    setFeeType(fee.type || 'flat');
+    setShowFeeForm(true);
+  };
+
+  // Save a fee
+  const handleSaveFee = () => {
+    if (!feeTitle.trim()) {
+      setErrorMessage("Fee title is required");
+      return;
+    }
+
+    const costValue = parseFloat(feeCost);
+    if (isNaN(costValue) || costValue < 0) {
+      setErrorMessage("Please enter a valid fee amount (0 or greater)");
+      return;
+    }
+
+    const feeData = {
+      title: feeTitle.trim(),
+      description: feeDescription.trim(),
+      cost: costValue,
+      type: feeType
+    };
+
+    if (editingFeeId) {
+      // Update existing fee
+      updateAdditionalFee({
+        ...feeData,
+        id: editingFeeId
+      });
+      setStatusMessage("Fee updated successfully");
+    } else {
+      // Add new fee
+      addAdditionalFee({
+        ...feeData,
+        id: `fee-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      });
+      setStatusMessage("Fee added successfully");
+    }
+
+    setShowFeeForm(false);
+    setErrorMessage(null);
+    clearStatusMessageAfterDelay();
+  };
+
+  // Cancel fee editing/creation
+  const handleCancelFee = () => {
+    setShowFeeForm(false);
+    setEditingFeeId(null);
+    setFeeTitle('');
+    setFeeDescription('');
+    setFeeCost('');
+    setErrorMessage(null);
+  };
 
   return (
     <div className="space-y-6">
-      {/* Minimum Stay Input */}
-      <div className="p-4 border border-gray-200 bg-white rounded-lg shadow-sm">
-        <label htmlFor="minimum_stay" className="block text-sm font-medium text-gray-700 mb-1">
-          Minimum Stay (Nights)
-        </label>
-        <div className="relative mt-1 rounded-md shadow-sm w-full max-w-xs">
-           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-             <Moon size={16} className="text-gray-400" aria-hidden="true" />
-           </div>
-           <input
-             type="number"
-             id="minimum_stay"
-             name="minimum_stay"
-             value={minimum_stay}
-             onChange={(e) => updateMinimumStay(e.target.value)}
-             min="1"
-             step="1"
-             className="block w-full rounded-md border-0 py-1.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-             placeholder="e.g., 3"
-             required
-           />
-         </div>
-         <p className="mt-2 text-xs text-gray-500">
-           Set the minimum number of nights guests must book. Default is 1 night.
-         </p>
-      </div>
-
-
       {/* Existing Pricing and Availability Section */}
       <h2 className="text-xl font-semibold leading-7 text-gray-900 pt-4 border-t mt-6">Pricing and Availability Calendar</h2>
       <p className="mt-1 text-sm leading-6 text-gray-600">
@@ -873,6 +931,237 @@ export function PricingFormStep() {
            </div>
        )}
 
+      {/* Additional Fees Section */}
+      <h2 className="text-xl font-semibold leading-7 text-gray-900 pt-6 border-t mt-8">Additional Fees</h2>
+      <p className="mt-1 text-sm leading-6 text-gray-600">
+        Add any additional fees that will be charged to guests, such as cleaning fees, pet fees, or service charges.
+      </p>
+
+      {/* Additional Fees List */}
+      <div className="bg-white border rounded-lg shadow-sm overflow-hidden mt-4">
+        <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+          <div>
+            <h4 className="text-lg font-medium leading-6 text-gray-900">Additional Fees ({additionalFees?.length || 0})</h4>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">These fees will be added to the total price.</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleAddFee}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            <Plus size={16} className="mr-2" />
+            Add Fee
+          </button>
+        </div>
+
+        {/* Fee Form (Conditional) */}
+        {showFeeForm && (
+          <div className="px-4 py-5 sm:px-6 bg-gray-50 border-t border-b border-gray-200">
+            <h5 className="text-md font-medium text-gray-900 mb-4">{editingFeeId ? 'Edit Fee' : 'Add New Fee'}</h5>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label htmlFor="feeTitle" className="block text-sm font-medium text-gray-700 mb-1">
+                  Fee Title *
+                </label>
+                <input
+                  type="text"
+                  id="feeTitle"
+                  name="feeTitle"
+                  value={feeTitle}
+                  onChange={(e) => setFeeTitle(e.target.value)}
+                  className="block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                  placeholder="e.g., Cleaning Fee"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="feeCost" className="block text-sm font-medium text-gray-700 mb-1">
+                  Fee Amount *
+                </label>
+                <div className="relative rounded-md shadow-sm">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <DollarSign size={16} className="text-gray-400" aria-hidden="true" />
+                  </div>
+                  <input
+                    type="number"
+                    id="feeCost"
+                    name="feeCost"
+                    value={feeCost}
+                    onChange={(e) => setFeeCost(e.target.value)}
+                    placeholder="e.g., 50"
+                    min="0"
+                    step="0.01"
+                    className="block w-full rounded-md border-0 py-1.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label htmlFor="feeType" className="block text-sm font-medium text-gray-700 mb-1">
+                Fee Type
+              </label>
+              <select
+                id="feeType"
+                name="feeType"
+                value={feeType}
+                onChange={(e) => setFeeType(e.target.value)}
+                className="block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+              >
+                <option value="flat">One-time fee (charged once per stay)</option>
+                <option value="per_night">Per night (charged for each night)</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="feeDescription" className="block text-sm font-medium text-gray-700 mb-1">
+                Description (Optional)
+              </label>
+              <textarea
+                id="feeDescription"
+                name="feeDescription"
+                value={feeDescription}
+                onChange={(e) => setFeeDescription(e.target.value)}
+                rows="2"
+                className="block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                placeholder="Explain what this fee covers..."
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-4 pt-4 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={handleCancelFee}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveFee}
+                className="px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                {editingFeeId ? 'Update Fee' : 'Save Fee'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {additionalFees && additionalFees.length > 0 ? (
+          <div className="border-t border-gray-200 overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Fee Name
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Amount
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {additionalFees.map(fee => (
+                  <tr key={fee.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <div className="flex items-center">
+                        <Tag size={16} className="mr-2 text-gray-400" />
+                        {fee.title}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {fee.type === 'flat' ? 'One-time fee' : 'Per night'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <span className="flex items-center">
+                        <DollarSign size={14} className="mr-0.5 text-gray-500" />
+                        {fee.cost}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                      <div className="truncate">
+                        {fee.description || <span className="text-gray-400 italic">No description</span>}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          type="button"
+                          onClick={() => handleEditFee(fee)}
+                          className="text-indigo-600 hover:text-indigo-900 inline-flex items-center"
+                        >
+                          <Edit size={14} className="mr-1" /> Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteAdditionalFee(fee.id)}
+                          className="text-red-600 hover:text-red-800 inline-flex items-center"
+                        >
+                          <Trash size={14} className="mr-1" /> Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="border-t border-gray-200 px-4 py-6 text-center">
+            <div className="flex flex-col items-center justify-center text-gray-500">
+              <Clipboard size={24} className="mb-2" />
+              <p className="mb-4">No additional fees have been added yet.</p>
+              {!showFeeForm && (
+                <button
+                  type="button"
+                  onClick={handleAddFee}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  <Plus size={16} className="mr-2" />
+                  Add Your First Fee
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Minimum Stay Input - MOVED TO BOTTOM AS REQUESTED */}
+      <div className="p-4 border border-gray-200 bg-white rounded-lg shadow-sm mt-8">
+        <label htmlFor="minimum_stay" className="block text-sm font-medium text-gray-700 mb-1">
+          Minimum Stay (Nights)
+        </label>
+        <div className="relative mt-1 rounded-md shadow-sm w-full max-w-xs">
+           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+             <Moon size={16} className="text-gray-400" aria-hidden="true" />
+           </div>
+           <input
+             type="number"
+             id="minimum_stay"
+             name="minimum_stay"
+             value={minimum_stay}
+             onChange={(e) => updateMinimumStay(e.target.value)}
+             min="1"
+             step="1"
+             className="block w-full rounded-md border-0 py-1.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+             placeholder="e.g., 3"
+             required
+           />
+         </div>
+         <p className="mt-2 text-sm text-gray-600">
+           Set the minimum number of nights guests must book. Default is 1 night.
+         </p>
+      </div>
     </div>
   );
 }
